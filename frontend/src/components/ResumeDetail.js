@@ -181,13 +181,20 @@ const ResumeDetail = ({ resume, onClose }) => {
           fontSize: '14px',
           tableLayout: 'fixed'
         }}>
+          <colgroup>
+            <col style={{ width: '16.6666%' }} />
+            <col style={{ width: '16.6666%' }} />
+            <col style={{ width: '16.6666%' }} />
+            <col style={{ width: '16.6666%' }} />
+            <col style={{ width: '16.6666%' }} />
+            <col style={{ width: '16.667%' }} />
+          </colgroup>
           <tbody>
             {/* 第一行：姓名、性别、年龄 */}
             <tr>
               <td style={{ 
                 border: '1px solid #000', 
                 padding: '8px', 
-                width: '16.67%',
                 fontWeight: 'bold', 
                 textAlign: 'center',
                 verticalAlign: 'middle',
@@ -198,7 +205,6 @@ const ResumeDetail = ({ resume, onClose }) => {
               <td style={{ 
                 border: '1px solid #000', 
                 padding: '8px', 
-                width: '16.67%',
                 textAlign: 'center',
                 verticalAlign: 'middle'
               }}>
@@ -207,7 +213,6 @@ const ResumeDetail = ({ resume, onClose }) => {
               <td style={{ 
                 border: '1px solid #000', 
                 padding: '8px', 
-                width: '16.67%',
                 fontWeight: 'bold', 
                 textAlign: 'center',
                 verticalAlign: 'middle',
@@ -218,7 +223,6 @@ const ResumeDetail = ({ resume, onClose }) => {
               <td style={{ 
                 border: '1px solid #000', 
                 padding: '8px', 
-                width: '16.67%',
                 textAlign: 'center',
                 verticalAlign: 'middle'
               }}>
@@ -227,7 +231,6 @@ const ResumeDetail = ({ resume, onClose }) => {
               <td style={{ 
                 border: '1px solid #000', 
                 padding: '8px', 
-                width: '16.67%',
                 fontWeight: 'bold', 
                 textAlign: 'center',
                 verticalAlign: 'middle',
@@ -238,7 +241,6 @@ const ResumeDetail = ({ resume, onClose }) => {
               <td style={{ 
                 border: '1px solid #000', 
                 padding: '8px', 
-                width: '16.65%',
                 textAlign: 'center',
                 verticalAlign: 'middle'
               }}>
