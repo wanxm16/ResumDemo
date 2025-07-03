@@ -19,7 +19,6 @@ const ResumeDetail = ({ resume, onClose }) => {
   const parseEducationHistory = (educationStr) => {
     if (!educationStr) return null;
     try {
-      // 修复双引号问题
       const fixedStr = educationStr.replace(/""/g, '"');
       return JSON.parse(fixedStr);
     } catch (error) {
@@ -32,7 +31,6 @@ const ResumeDetail = ({ resume, onClose }) => {
   const parseWorkHistory = (workStr) => {
     if (!workStr) return null;
     try {
-      // 修复双引号问题
       const fixedStr = workStr.replace(/""/g, '"');
       return JSON.parse(fixedStr);
     } catch (error) {
@@ -136,34 +134,56 @@ const ResumeDetail = ({ resume, onClose }) => {
 
   const educationHistory = parseEducationHistory(resume.教育经历);
   const workHistory = parseWorkHistory(resume.工作经历);
-
-  // 获取格式化后的教育经历和工作经历文本
   const formattedEducation = formatEducationHistory(educationHistory);
   const formattedWork = formatWorkHistory(workHistory);
+
+  // 通用单元格样式
+  const cellStyle = {
+    border: '1px solid #000',
+    padding: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '40px'
+  };
+
+  const labelStyle = {
+    ...cellStyle,
+    fontWeight: 'bold',
+    backgroundColor: '#f5f5f5'
+  };
+
+  const contentStyle = {
+    ...cellStyle,
+    backgroundColor: '#fff'
+  };
+
+  const multilineStyle = {
+    ...cellStyle,
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
+    whiteSpace: 'pre-line',
+    lineHeight: '1.6',
+    textAlign: 'left',
+    minHeight: '60px'
+  };
 
   return (
     <div>
       {/* 操作按钮 */}
       <div style={{ marginBottom: 16, textAlign: 'right' }}>
         <Space>
-          <Button
-            type="primary"
-            icon={<DownloadOutlined />}
-            onClick={exportToPDF}
-          >
+          <Button type="primary" icon={<DownloadOutlined />} onClick={exportToPDF}>
             导出PDF
           </Button>
-          <Button
-            icon={<PrinterOutlined />}
-            onClick={handlePrint}
-          >
+          <Button icon={<PrinterOutlined />} onClick={handlePrint}>
             打印
           </Button>
           <Button onClick={onClose}>关闭</Button>
         </Space>
       </div>
 
-      {/* 简历内容 - 传统表格格式 */}
+      {/* 简历内容 - CSS Grid布局 */}
       <div 
         id="resume-detail-content" 
         style={{ 
@@ -173,456 +193,80 @@ const ResumeDetail = ({ resume, onClose }) => {
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}
       >
-        <table style={{
-          width: '100%',
-          borderCollapse: 'collapse',
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(6, 1fr)',
           border: '2px solid #000',
           fontFamily: '宋体, SimSun, "Microsoft YaHei", sans-serif',
           fontSize: '14px',
-          tableLayout: 'fixed'
+          width: '100%'
         }}>
-          <colgroup>
-            <col style={{ width: '16.6666%' }} />
-            <col style={{ width: '16.6666%' }} />
-            <col style={{ width: '16.6666%' }} />
-            <col style={{ width: '16.6666%' }} />
-            <col style={{ width: '16.6666%' }} />
-            <col style={{ width: '16.667%' }} />
-          </colgroup>
-          <tbody>
-            {/* 第一行：姓名、性别、年龄 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                姓名
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center',
-                verticalAlign: 'middle'
-              }}>
-                {resume.姓名 || ''}
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                性别
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center',
-                verticalAlign: 'middle'
-              }}>
-                {resume.性别 || ''}
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                年龄
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center',
-                verticalAlign: 'middle'
-              }}>
-                {resume.年龄 || ''}
-              </td>
-            </tr>
+          
+          {/* 第一行：姓名、性别、年龄 */}
+          <div style={labelStyle}>姓名</div>
+          <div style={contentStyle}>{resume.姓名 || ''}</div>
+          <div style={labelStyle}>性别</div>
+          <div style={contentStyle}>{resume.性别 || ''}</div>
+          <div style={labelStyle}>年龄</div>
+          <div style={contentStyle}>{resume.年龄 || ''}</div>
 
-            {/* 第二行：政治面貌、体重、籍贯 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                政治面貌
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center',
-                verticalAlign: 'middle'
-              }}>
-                {resume.政治面貌 || ''}
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                体重
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center',
-                verticalAlign: 'middle'
-              }}>
-                {resume.体重 ? `${resume.体重}kg` : ''}
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                籍贯
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center',
-                verticalAlign: 'middle'
-              }}>
-                {resume.籍贯 || ''}
-              </td>
-            </tr>
+          {/* 第二行：政治面貌、体重、籍贯 */}
+          <div style={labelStyle}>政治面貌</div>
+          <div style={contentStyle}>{resume.政治面貌 || ''}</div>
+          <div style={labelStyle}>体重</div>
+          <div style={contentStyle}>{resume.体重 ? `${resume.体重}kg` : ''}</div>
+          <div style={labelStyle}>籍贯</div>
+          <div style={contentStyle}>{resume.籍贯 || ''}</div>
 
-            {/* 第三行：健康状况、身高、学历 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                健康状况
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center',
-                verticalAlign: 'middle'
-              }}>
-                {resume.健康状况 || ''}
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                身高
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center',
-                verticalAlign: 'middle'
-              }}>
-                {resume.身高 ? `${resume.身高}cm` : ''}
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                学历
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center',
-                verticalAlign: 'middle'
-              }}>
-                {resume.学历 || ''}
-              </td>
-            </tr>
+          {/* 第三行：健康状况、身高、学历 */}
+          <div style={labelStyle}>健康状况</div>
+          <div style={contentStyle}>{resume.健康状况 || ''}</div>
+          <div style={labelStyle}>身高</div>
+          <div style={contentStyle}>{resume.身高 ? `${resume.身高}cm` : ''}</div>
+          <div style={labelStyle}>学历</div>
+          <div style={contentStyle}>{resume.学历 || ''}</div>
 
-            {/* 第四行：毕业院校、专业 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                毕业院校
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center',
-                verticalAlign: 'middle'
-              }}>
-                {resume.毕业院校 || ''}
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                专业
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center', 
-                colSpan: 3,
-                verticalAlign: 'middle'
-              }}>
-                {resume.专业 || ''}
-              </td>
-            </tr>
+          {/* 第四行：毕业院校、专业 */}
+          <div style={labelStyle}>毕业院校</div>
+          <div style={contentStyle}>{resume.毕业院校 || ''}</div>
+          <div style={labelStyle}>专业</div>
+          <div style={{...contentStyle, gridColumn: 'span 3'}}>{resume.专业 || ''}</div>
 
-            {/* 第五行：求职意向 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                求职意向
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center', 
-                colSpan: 5,
-                verticalAlign: 'middle'
-              }}>
-                {resume.求职意向 || ''}
-              </td>
-            </tr>
+          {/* 第五行：求职意向 */}
+          <div style={labelStyle}>求职意向</div>
+          <div style={{...contentStyle, gridColumn: 'span 5'}}>{resume.求职意向 || ''}</div>
 
-            {/* 第六行：手机、邮箱 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                手机
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center', 
-                colSpan: 2,
-                verticalAlign: 'middle'
-              }}>
-                {resume.手机 || ''}
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                邮箱
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                textAlign: 'center', 
-                colSpan: 2,
-                verticalAlign: 'middle'
-              }}>
-                {resume.邮箱 || ''}
-              </td>
-            </tr>
+          {/* 第六行：手机、邮箱 */}
+          <div style={labelStyle}>手机</div>
+          <div style={{...contentStyle, gridColumn: 'span 2'}}>{resume.手机 || ''}</div>
+          <div style={labelStyle}>邮箱</div>
+          <div style={{...contentStyle, gridColumn: 'span 2'}}>{resume.邮箱 || ''}</div>
 
-            {/* 教育经历 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'top',
-                backgroundColor: '#f5f5f5',
-                minHeight: '60px'
-              }}>
-                教育经历
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                colSpan: 5,
-                verticalAlign: 'top',
-                whiteSpace: 'pre-line',
-                textAlign: 'left',
-                lineHeight: '1.6'
-              }}>
-                {formattedEducation}
-              </td>
-            </tr>
+          {/* 教育经历 */}
+          <div style={{...labelStyle, alignItems: 'flex-start', paddingTop: '8px'}}>教育经历</div>
+          <div style={{...multilineStyle, gridColumn: 'span 5'}}>{formattedEducation}</div>
 
-            {/* 荣誉奖项 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                荣誉奖项
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                colSpan: 5,
-                verticalAlign: 'middle',
-                textAlign: 'left'
-              }}>
-                {resume.荣誉奖项 || ''}
-              </td>
-            </tr>
+          {/* 荣誉奖项 */}
+          <div style={{...labelStyle, alignItems: 'flex-start', paddingTop: '8px'}}>荣誉奖项</div>
+          <div style={{...multilineStyle, gridColumn: 'span 5'}}>{resume.荣誉奖项 || ''}</div>
 
-            {/* 技能证书 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                技能证书
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                colSpan: 5,
-                verticalAlign: 'middle',
-                textAlign: 'left'
-              }}>
-                {resume.技能证书 || ''}
-              </td>
-            </tr>
+          {/* 技能证书 */}
+          <div style={{...labelStyle, alignItems: 'flex-start', paddingTop: '8px'}}>技能证书</div>
+          <div style={{...multilineStyle, gridColumn: 'span 5'}}>{resume.技能证书 || ''}</div>
 
-            {/* 工作经历 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'top',
-                backgroundColor: '#f5f5f5',
-                minHeight: '80px'
-              }}>
-                工作经历
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                colSpan: 5,
-                verticalAlign: 'top',
-                whiteSpace: 'pre-line',
-                textAlign: 'left',
-                lineHeight: '1.6'
-              }}>
-                {formattedWork}
-              </td>
-            </tr>
+          {/* 工作经历 */}
+          <div style={{...labelStyle, alignItems: 'flex-start', paddingTop: '8px'}}>工作经历</div>
+          <div style={{...multilineStyle, gridColumn: 'span 5'}}>{formattedWork}</div>
 
-            {/* 兴趣爱好 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'middle',
-                backgroundColor: '#f5f5f5'
-              }}>
-                兴趣爱好
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                colSpan: 5,
-                verticalAlign: 'middle',
-                textAlign: 'left'
-              }}>
-                {resume.兴趣爱好 || ''}
-              </td>
-            </tr>
+          {/* 兴趣爱好 */}
+          <div style={{...labelStyle, alignItems: 'flex-start', paddingTop: '8px'}}>兴趣爱好</div>
+          <div style={{...multilineStyle, gridColumn: 'span 5'}}>{resume.兴趣爱好 || ''}</div>
 
-            {/* 自我评价 */}
-            <tr>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                fontWeight: 'bold', 
-                textAlign: 'center',
-                verticalAlign: 'top',
-                backgroundColor: '#f5f5f5'
-              }}>
-                自我评价
-              </td>
-              <td style={{ 
-                border: '1px solid #000', 
-                padding: '8px', 
-                colSpan: 5,
-                verticalAlign: 'top',
-                textAlign: 'left',
-                lineHeight: '1.4'
-              }}>
-                {resume.自我评价 || ''}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+          {/* 自我评价 */}
+          <div style={{...labelStyle, alignItems: 'flex-start', paddingTop: '8px'}}>自我评价</div>
+          <div style={{...multilineStyle, gridColumn: 'span 5'}}>{resume.自我评价 || ''}</div>
 
-        {/* 录入时间 */}
-        {resume.录入时间 && (
-          <div style={{ textAlign: 'right', marginTop: 16, fontSize: '12px', color: '#666' }}>
-            录入时间：{resume.录入时间}
-          </div>
-        )}
+        </div>
       </div>
 
       {/* 打印样式 */}
