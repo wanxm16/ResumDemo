@@ -25,9 +25,9 @@ mkdir -p ../data
 
 # 启动FastAPI服务
 echo "启动FastAPI服务..."
-echo "服务地址: http://localhost:8000"
-echo "API文档: http://localhost:8000/docs"
+echo "服务地址: http://localhost:8080"
+echo "API文档: http://localhost:8080/docs"
 echo "按 Ctrl+C 停止服务"
 echo "=========================================================="
 
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8080 

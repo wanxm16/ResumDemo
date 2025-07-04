@@ -23,9 +23,9 @@ pnpm install
 
 # 启动开发服务器
 echo "启动React开发服务器..."
-echo "前端地址: http://localhost:3000"
-echo "请确保后端服务已启动 (http://localhost:8000)"
+echo "前端地址: http://localhost:4000"
+echo "请确保后端服务已启动 (http://localhost:8080)"
 echo "按 Ctrl+C 停止服务"
 echo "=========================================================="
 
-pnpm start 
+PORT=4000 pnpm start 

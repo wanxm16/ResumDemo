@@ -10,35 +10,45 @@ import {
   message,
   Empty,
   Typography,
-  Spin
+  Spin,
+  Popconfirm,
+  Row,
+  Col,
+  InputNumber,
+  Form
 } from 'antd';
 import {
   SearchOutlined,
   EyeOutlined,
   ReloadOutlined,
-  UserOutlined
+  UserOutlined,
+  DeleteOutlined
 } from '@ant-design/icons';
-import { getResumes } from '../services/api';
+import { getResumes, deleteResume } from '../services/api';
 import ResumeDetail from './ResumeDetail';
 
-const { Search } = Input;
 const { Text } = Typography;
 
 const ResumeList = ({ refreshTrigger }) => {
   const [loading, setLoading] = useState(false);
-  const [resumes, setResumes] = useState([]);
   const [filteredResumes, setFilteredResumes] = useState([]);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedResume, setSelectedResume] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   const [modalVisible, setModalVisible] = useState(false);
+  const [filters, setFilters] = useState({
+    minAge: null,
+    maxAge: null,
+    minWorkYears: null,
+    maxWorkYears: null
+  });
 
   // 加载简历列表
-  const loadResumes = async (keyword = '') => {
+  const loadResumes = async (keyword = '', filterParams = {}) => {
     setLoading(true);
     try {
-      const response = await getResumes(keyword);
+      const response = await getResumes(keyword, filterParams);
       if (response.success) {
-        setResumes(response.data);
         setFilteredResumes(response.data);
       } else {
         message.error('获取简历列表失败');
@@ -56,26 +66,63 @@ const ResumeList = ({ refreshTrigger }) => {
     loadResumes();
   }, [refreshTrigger]);
 
-  // 搜索功能
-  const handleSearch = (value) => {
-    setSearchKeyword(value);
-    if (!value.trim()) {
-      setFilteredResumes(resumes);
-      return;
-    }
+  // 应用筛选
+  const applyFilters = () => {
+    loadResumes(searchKeyword, filters);
+  };
 
-    const filtered = resumes.filter(resume =>
-      Object.values(resume).some(field =>
-        field && field.toString().toLowerCase().includes(value.toLowerCase())
-      )
-    );
-    setFilteredResumes(filtered);
+  // 重置筛选
+  const resetFilters = () => {
+    setSearchKeyword('');
+    setFilters({
+      minAge: null,
+      maxAge: null,
+      minWorkYears: null,
+      maxWorkYears: null
+    });
+    loadResumes('', {});
   };
 
   // 查看详情
-  const showDetail = (resume) => {
+  const showDetail = (resume, index) => {
     setSelectedResume(resume);
+    setSelectedIndex(index);
     setModalVisible(true);
+  };
+
+  // 翻页功能
+  const showPreviousResume = () => {
+    if (selectedIndex > 0) {
+      const newIndex = selectedIndex - 1;
+      setSelectedResume(filteredResumes[newIndex]);
+      setSelectedIndex(newIndex);
+    }
+  };
+
+  const showNextResume = () => {
+    if (selectedIndex < filteredResumes.length - 1) {
+      const newIndex = selectedIndex + 1;
+      setSelectedResume(filteredResumes[newIndex]);
+      setSelectedIndex(newIndex);
+    }
+  };
+
+  // 删除简历
+  const handleDelete = async (resume) => {
+    try {
+      // 使用姓名和录入时间作为唯一标识符进行删除
+      const uniqueId = `${resume.姓名}_${resume.录入时间}`;
+      const response = await deleteResume(uniqueId);
+      if (response.success) {
+        message.success('简历删除成功');
+        loadResumes(searchKeyword, filters); // 重新加载列表
+      } else {
+        message.error('删除失败');
+      }
+    } catch (error) {
+      console.error('删除简历失败:', error);
+      message.error('删除简历失败，请重试');
+    }
   };
 
   // 表格列定义
@@ -168,17 +215,36 @@ const ResumeList = ({ refreshTrigger }) => {
     {
       title: '操作',
       key: 'action',
-      width: 100,
+      width: 150,
       fixed: 'right',
-      render: (_, record) => (
-        <Button
-          type="link"
-          icon={<EyeOutlined />}
-          onClick={() => showDetail(record)}
-          size="small"
-        >
-          查看详情
-        </Button>
+      render: (_, record, index) => (
+        <Space>
+          <Button
+            type="link"
+            icon={<EyeOutlined />}
+            onClick={() => showDetail(record, index)}
+            size="small"
+          >
+            查看
+          </Button>
+          <Popconfirm
+            title="确认删除"
+            description="确定要删除这条简历记录吗？此操作不可恢复。"
+            onConfirm={() => handleDelete(record)}
+            okText="确认"
+            cancelText="取消"
+            okType="danger"
+          >
+            <Button
+              type="link"
+              icon={<DeleteOutlined />}
+              size="small"
+              danger
+            >
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -206,6 +272,13 @@ const ResumeList = ({ refreshTrigger }) => {
           <ResumeDetail
             resume={selectedResume}
             onClose={() => setModalVisible(false)}
+            // 翻页相关参数
+            currentIndex={selectedIndex}
+            totalCount={filteredResumes.length}
+            canGoPrevious={selectedIndex > 0}
+            canGoNext={selectedIndex < filteredResumes.length - 1}
+            onPrevious={showPreviousResume}
+            onNext={showNextResume}
           />
         </div>
       </Modal>
@@ -223,33 +296,112 @@ const ResumeList = ({ refreshTrigger }) => {
           </Space>
         }
         extra={
-          <Space>
-            <Search
-              placeholder="搜索简历（姓名、专业、院校等）"
-              allowClear
-              onSearch={handleSearch}
-              onChange={(e) => {
-                if (!e.target.value) {
-                  handleSearch('');
-                }
-              }}
-              style={{ width: 300 }}
-              enterButton={<SearchOutlined />}
-            />
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => loadResumes()}
-              loading={loading}
-            >
-              刷新
-            </Button>
-          </Space>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => loadResumes(searchKeyword, filters)}
+            loading={loading}
+          >
+            刷新
+          </Button>
         }
       >
+        {/* 搜索和筛选面板 */}
+        <div style={{ marginBottom: 16 }}>
+          {/* 搜索框 */}
+          <div style={{ marginBottom: 16 }}>
+            <Input
+              placeholder="搜索简历（姓名、专业、院校等）"
+              allowClear
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              style={{ width: 400 }}
+              prefix={<SearchOutlined />}
+            />
+          </div>
+          
+          {/* 筛选面板 */}
+          <div style={{ padding: '16px 0', borderBottom: '1px solid #f0f0f0' }}>
+            <Form layout="horizontal">
+              <Row gutter={16}>
+                <Col span={12}>
+                  <div>
+                    <Text style={{ fontWeight: 500, color: '#262626', marginBottom: 8, display: 'block' }}>年龄筛选</Text>
+                    <Row gutter={8}>
+                      <Col span={12}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>最小年龄</Text>
+                        <InputNumber
+                          placeholder="最小年龄"
+                          value={filters.minAge}
+                          onChange={(value) => setFilters(prev => ({ ...prev, minAge: value }))}
+                          min={18}
+                          max={65}
+                          style={{ width: '100%' }}
+                        />
+                      </Col>
+                      <Col span={12}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>最大年龄</Text>
+                        <InputNumber
+                          placeholder="最大年龄"
+                          value={filters.maxAge}
+                          onChange={(value) => setFilters(prev => ({ ...prev, maxAge: value }))}
+                          min={18}
+                          max={65}
+                          style={{ width: '100%' }}
+                        />
+                      </Col>
+                    </Row>
+                  </div>
+                </Col>
+                <Col span={12}>
+                  <div>
+                    <Text style={{ fontWeight: 500, color: '#262626', marginBottom: 8, display: 'block' }}>工作年限筛选</Text>
+                    <Row gutter={8}>
+                      <Col span={12}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>最小年限</Text>
+                        <InputNumber
+                          placeholder="最小年限"
+                          value={filters.minWorkYears}
+                          onChange={(value) => setFilters(prev => ({ ...prev, minWorkYears: value }))}
+                          min={0}
+                          max={30}
+                          style={{ width: '100%' }}
+                        />
+                      </Col>
+                      <Col span={12}>
+                        <Text type="secondary" style={{ fontSize: '12px' }}>最大年限</Text>
+                        <InputNumber
+                          placeholder="最大年限"
+                          value={filters.maxWorkYears}
+                          onChange={(value) => setFilters(prev => ({ ...prev, maxWorkYears: value }))}
+                          min={0}
+                          max={30}
+                          style={{ width: '100%' }}
+                        />
+                      </Col>
+                    </Row>
+                  </div>
+                </Col>
+              </Row>
+              <Row gutter={8} style={{ marginTop: 16 }}>
+                <Col>
+                  <Button type="primary" onClick={applyFilters}>
+                    搜索与筛选
+                  </Button>
+                </Col>
+                <Col>
+                  <Button onClick={resetFilters}>
+                    重置
+                  </Button>
+                </Col>
+              </Row>
+            </Form>
+          </div>
+        </div>
+
         <Spin spinning={loading}>
           {filteredResumes.length === 0 && !loading ? (
             <Empty
-              description={searchKeyword ? "未找到匹配的简历" : "暂无简历数据"}
+              description={searchKeyword || Object.values(filters).some(v => v !== null) ? "未找到匹配的简历" : "暂无简历数据"}
               style={{ margin: '40px 0' }}
             />
           ) : (
@@ -257,7 +409,7 @@ const ResumeList = ({ refreshTrigger }) => {
               columns={columns}
               dataSource={filteredResumes}
               rowKey={(record, index) => `${record.姓名}_${index}`}
-              scroll={{ x: 1200 }}
+              scroll={{ x: 1300 }}
               pagination={{
                 total: filteredResumes.length,
                 pageSize: 10,

@@ -3,37 +3,39 @@ import {
   Layout,
   Typography,
   Tabs,
-  Card,
-  Statistic,
-  Row,
-  Col,
   message,
   Space,
-  Divider
+  Divider,
+  Dropdown
 } from 'antd';
 import {
   CloudUploadOutlined,
   UnorderedListOutlined,
   BarChartOutlined,
   FileTextOutlined,
-  FormOutlined
+  FormOutlined,
+  HomeOutlined,
+  DownOutlined,
+  PlusOutlined
 } from '@ant-design/icons';
+import HomePage from './components/HomePage';
 import ResumeUpload from './components/ResumeUpload';
 import ResumeList from './components/ResumeList';
 import ResumeForm from './components/ResumeForm';
+import Statistics from './components/Statistics';
 import { getStats } from './services/api';
+
 import 'antd/dist/reset.css';
 
 const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
 
 function App() {
-  const [activeTab, setActiveTab] = useState('upload');
-  const [stats, setStats] = useState({ total_resumes: 0 });
+  const [activeTab, setActiveTab] = useState('home');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [stats, setStats] = useState({});
 
-  // 加载统计信息
+  // 加载统计数据
   const loadStats = async () => {
     try {
       const response = await getStats();
@@ -45,7 +47,6 @@ function App() {
     }
   };
 
-  // 组件挂载时加载统计信息
   useEffect(() => {
     loadStats();
   }, [refreshTrigger]);
@@ -53,9 +54,7 @@ function App() {
   // 处理上传成功
   const handleUploadSuccess = (data) => {
     message.success('简历上传成功！');
-    // 刷新统计信息和列表
     setRefreshTrigger(prev => prev + 1);
-    // 自动切换到列表页面
     setTimeout(() => {
       setActiveTab('list');
     }, 1000);
@@ -64,35 +63,99 @@ function App() {
   // 处理表单提交成功
   const handleFormSuccess = () => {
     message.success('简历提交成功！');
-    // 刷新统计信息和列表
     setRefreshTrigger(prev => prev + 1);
-    // 自动切换到列表页面
     setTimeout(() => {
       setActiveTab('list');
     }, 1000);
   };
 
-  // Tab项配置
+  // 处理导航
+  const handleNavigate = (tabKey) => {
+    setActiveTab(tabKey);
+  };
+
+  // 简历录入下拉菜单
+  const resumeInputMenu = {
+    items: [
+      {
+        key: 'upload',
+        label: (
+          <Space>
+            <CloudUploadOutlined />
+            <span>上传文件</span>
+          </Space>
+        ),
+        onClick: () => setActiveTab('upload')
+      },
+      {
+        key: 'form',
+        label: (
+          <Space>
+            <FormOutlined />
+            <span>在线填写</span>
+          </Space>
+        ),
+        onClick: () => setActiveTab('form')
+      }
+    ]
+  };
+
+  // 渲染内容
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'home':
+        return <HomePage onNavigate={handleNavigate} stats={stats} />;
+      case 'upload':
+        return (
+          <div style={{ padding: '24px' }}>
+            <ResumeUpload onUploadSuccess={handleUploadSuccess} />
+          </div>
+        );
+      case 'form':
+        return (
+          <div style={{ padding: '24px' }}>
+            <ResumeForm onSuccess={handleFormSuccess} />
+          </div>
+        );
+      case 'list':
+        return (
+          <div style={{ padding: '24px' }}>
+            <ResumeList refreshTrigger={refreshTrigger} />
+          </div>
+        );
+      case 'stats':
+        return (
+          <div style={{ padding: '24px' }}>
+            <Statistics refreshTrigger={refreshTrigger} />
+          </div>
+        );
+      default:
+        return <HomePage onNavigate={handleNavigate} stats={stats} />;
+    }
+  };
+
+  // Tab项配置（仅用于显示标签栏）
   const tabItems = [
     {
-      key: 'upload',
+      key: 'home',
       label: (
         <Space>
-          <CloudUploadOutlined />
-          <span>简历上传</span>
+          <HomeOutlined />
+          <span>首页</span>
         </Space>
-      ),
-      children: <ResumeUpload onUploadSuccess={handleUploadSuccess} />
+      )
     },
     {
-      key: 'form',
+      key: 'resume-input',
       label: (
-        <Space>
-          <FormOutlined />
-          <span>填写简历</span>
-        </Space>
-      ),
-      children: <ResumeForm onSuccess={handleFormSuccess} />
+        <Dropdown menu={resumeInputMenu} trigger={['click']}>
+          <Space>
+            <PlusOutlined />
+            <span>简历录入</span>
+            <DownOutlined style={{ fontSize: '10px' }} />
+          </Space>
+        </Dropdown>
+      )
     },
     {
       key: 'list',
@@ -101,46 +164,15 @@ function App() {
           <UnorderedListOutlined />
           <span>简历列表</span>
         </Space>
-      ),
-      children: <ResumeList refreshTrigger={refreshTrigger} />
+      )
     },
     {
       key: 'stats',
       label: (
         <Space>
           <BarChartOutlined />
-          <span>统计信息</span>
+          <span>统计分析</span>
         </Space>
-      ),
-      children: (
-        <Card title="系统统计">
-          <Row gutter={16}>
-            <Col span={8}>
-              <Statistic
-                title="总简历数量"
-                value={stats.total_resumes}
-                prefix={<FileTextOutlined />}
-                suffix="份"
-                valueStyle={{ color: '#1890ff' }}
-              />
-            </Col>
-            <Col span={8}>
-              <Statistic
-                title="系统状态"
-                value={stats.system_status || '正常'}
-                valueStyle={{ color: '#52c41a' }}
-              />
-            </Col>
-            <Col span={8}>
-              <Statistic
-                title="在线时长"
-                value="24/7"
-                suffix="服务"
-                valueStyle={{ color: '#722ed1' }}
-              />
-            </Col>
-          </Row>
-        </Card>
       )
     }
   ];
@@ -166,37 +198,52 @@ function App() {
           <Title level={3} style={{ 
             margin: 0, 
             color: '#1890ff',
-            fontWeight: 'bold'
-          }}>
-            简历上传解析系统
+            fontWeight: 'bold',
+            cursor: 'pointer'
+          }}
+          onClick={() => setActiveTab('home')}
+          >
+            智能简历管理系统
           </Title>
           <div style={{ marginLeft: 'auto' }}>
             <Text type="secondary">
-              智能简历解析 · 数据结构化存储
+              AI驱动 · 智能解析 · 高效管理
             </Text>
           </div>
         </div>
       </Header>
 
       <Content style={{ 
-        padding: '24px',
+        padding: 0,
         margin: 0,
         backgroundColor: '#f0f2f5'
       }}>
         <div style={{ 
           maxWidth: '1200px', 
           margin: '0 auto',
-          backgroundColor: '#fff',
-          borderRadius: '8px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          backgroundColor: activeTab === 'home' ? 'transparent' : '#fff',
+          borderRadius: activeTab === 'home' ? '0' : '8px',
+          boxShadow: activeTab === 'home' ? 'none' : '0 2px 8px rgba(0,0,0,0.1)',
+          marginTop: activeTab === 'home' ? '0' : '24px',
+          marginBottom: activeTab === 'home' ? '0' : '24px'
         }}>
-          <Tabs
-            activeKey={activeTab}
-            onChange={setActiveTab}
-            size="large"
-            style={{ padding: '0 24px' }}
-            items={tabItems}
-          />
+          {/* 标签栏 */}
+          {activeTab !== 'home' && (
+            <Tabs
+              activeKey={['upload', 'form'].includes(activeTab) ? 'resume-input' : activeTab}
+              onChange={(key) => {
+                if (key !== 'resume-input') {
+                  setActiveTab(key);
+                }
+              }}
+              size="large"
+              style={{ padding: '0 24px' }}
+              items={tabItems}
+            />
+          )}
+          
+          {/* 内容区域 */}
+          {renderContent()}
         </div>
       </Content>
 
@@ -207,15 +254,15 @@ function App() {
         padding: '24px 50px'
       }}>
         <Space direction="vertical" size="small">
-          <Text strong>简历上传解析系统</Text>
+          <Text strong>智能简历管理系统</Text>
           <Text type="secondary">
-            基于 FastAPI + React + Ant Design 构建 | 
-            支持 Word 格式简历智能解析 | 
-            数据安全可靠
+            基于 AI 技术的简历解析与管理平台 | 
+            支持多格式文件智能解析 | 
+            数据安全可靠 · 高效便捷
           </Text>
           <Divider type="vertical" />
           <Text type="secondary" style={{ fontSize: '12px' }}>
-            © 2024 Resume Upload System. 技术栈：Python FastAPI + React + Ant Design
+            © 2024 AI Resume Management System. 技术栈：React + Ant Design + FastAPI + Python AI
           </Text>
         </Space>
       </Footer>
@@ -223,4 +270,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

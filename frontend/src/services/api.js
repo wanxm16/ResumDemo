@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://localhost:8080';
 
 // 创建axios实例
 const api = axios.create({
@@ -56,13 +56,28 @@ export const uploadResume = async (file) => {
 /**
  * 获取简历列表
  * @param {string} keyword - 搜索关键词（可选）
+ * @param {Object} filters - 筛选条件
  * @param {number} limit - 结果数量限制
  * @returns {Promise} 简历列表
  */
-export const getResumes = async (keyword = '', limit = 100) => {
+export const getResumes = async (keyword = '', filters = {}, limit = 100) => {
   const params = { limit };
   if (keyword) {
     params.keyword = keyword;
+  }
+  
+  // 添加筛选参数
+  if (filters.minAge !== undefined && filters.minAge !== null) {
+    params.min_age = filters.minAge;
+  }
+  if (filters.maxAge !== undefined && filters.maxAge !== null) {
+    params.max_age = filters.maxAge;
+  }
+  if (filters.minWorkYears !== undefined && filters.minWorkYears !== null) {
+    params.min_work_years = filters.minWorkYears;
+  }
+  if (filters.maxWorkYears !== undefined && filters.maxWorkYears !== null) {
+    params.max_work_years = filters.maxWorkYears;
   }
   
   const response = await api.get('/resumes', { params });
@@ -94,6 +109,27 @@ export const healthCheck = async () => {
  */
 export const submitResumeForm = async (resumeData) => {
   const response = await api.post('/submit-form', resumeData);
+  return response.data;
+};
+
+/**
+ * AI生成简历测试数据
+ * @returns {Promise} 生成的简历数据
+ */
+export const generateResumeData = async () => {
+  const response = await api.post('/generate-resume-data', {}, {
+    timeout: 60000, // AI生成设置为60秒超时
+  });
+  return response.data;
+};
+
+/**
+ * 删除简历记录
+ * @param {string} uniqueId - 简历唯一标识符（姓名_录入时间）
+ * @returns {Promise} 删除结果
+ */
+export const deleteResume = async (uniqueId) => {
+  const response = await api.delete(`/resumes/${encodeURIComponent(uniqueId)}`);
   return response.data;
 };
 

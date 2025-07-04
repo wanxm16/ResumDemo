@@ -122,16 +122,23 @@ class DataStorage:
             # 简化CSV读取参数
             df = pd.read_csv(self.csv_path, encoding='utf-8')
             
+            # 按录入时间倒序排列（最新的在前面）
+            if '录入时间' in df.columns:
+                df = df.sort_values('录入时间', ascending=False)
+            
             # 将NaN值替换为None
             df = df.fillna('')  # 先用空字符串填充NaN
             
             # 转换为字典格式
             records = df.to_dict('records')
             
-            # 将空字符串转换为None
+            # 将空字符串转换为None，确保没有NaN值
             for record in records:
                 for key, value in record.items():
-                    if value == '':
+                    if value == '' or pd.isna(value):
+                        record[key] = None
+                    # 确保数值类型不包含NaN
+                    elif isinstance(value, float) and pd.isna(value):
                         record[key] = None
             
             return records
@@ -172,4 +179,200 @@ class DataStorage:
             
         except Exception as e:
             print(f"搜索数据时出错: {str(e)}")
-            return [] 
+            return []
+    
+    def delete_resume(self, index: int) -> bool:
+        """删除指定索引的简历记录"""
+        try:
+            df = pd.read_csv(self.csv_path, encoding='utf-8')
+            
+            # 检查索引是否有效
+            if index < 0 or index >= len(df):
+                print(f"无效的索引: {index}")
+                return False
+            
+            # 删除指定行
+            df = df.drop(index=index).reset_index(drop=True)
+            
+            # 保存更新后的数据
+            df.to_csv(self.csv_path, index=False, encoding='utf-8')
+            
+            return True
+            
+        except Exception as e:
+            print(f"删除数据时出错: {str(e)}")
+            return False
+    
+    def delete_resume_by_id(self, unique_id: str) -> bool:
+        """根据唯一标识符删除简历记录（姓名_录入时间）"""
+        try:
+            df = pd.read_csv(self.csv_path, encoding='utf-8')
+            
+            # 解析唯一标识符
+            parts = unique_id.split('_', 1)  # 分割成最多2部分，以防姓名中有下划线
+            if len(parts) != 2:
+                print(f"无效的唯一标识符格式: {unique_id}")
+                return False
+                
+            name, record_time = parts
+            
+            # 查找匹配的记录
+            mask = (df['姓名'] == name) & (df['录入时间'] == record_time)
+            matching_rows = df[mask]
+            
+            if len(matching_rows) == 0:
+                print(f"未找到匹配的记录: {unique_id}")
+                return False
+            
+            if len(matching_rows) > 1:
+                print(f"找到多条匹配记录，删除第一条: {unique_id}")
+            
+            # 删除匹配的行（如果有多条，删除第一条）
+            first_match_index = matching_rows.index[0]
+            df = df.drop(index=first_match_index).reset_index(drop=True)
+            
+            # 保存更新后的数据
+            df.to_csv(self.csv_path, index=False, encoding='utf-8')
+            
+            print(f"成功删除记录: {unique_id}")
+            return True
+            
+        except Exception as e:
+            print(f"根据ID删除数据时出错: {str(e)}")
+            return False
+    
+    def filter_resumes(self, keyword: str = '', min_age: int = None, max_age: int = None, 
+                      min_work_years: int = None, max_work_years: int = None) -> List[dict]:
+        """根据多个条件筛选简历"""
+        try:
+            df = pd.read_csv(self.csv_path, encoding='utf-8')
+            
+            # 关键词搜索
+            if keyword:
+                text_columns = ['姓名', '专业', '毕业院校', '求职意向', '工作经历', '技能证书']
+                mask = pd.Series([False] * len(df))
+                for col in text_columns:
+                    if col in df.columns:
+                        mask |= df[col].astype(str).str.contains(keyword, case=False, na=False)
+                df = df[mask]
+            
+            # 年龄筛选
+            if min_age is not None or max_age is not None:
+                df['年龄_数值'] = pd.to_numeric(df['年龄'], errors='coerce')
+                # 过滤掉NaN值
+                df = df[df['年龄_数值'].notna()]
+                if min_age is not None:
+                    df = df[df['年龄_数值'] >= min_age]
+                if max_age is not None:
+                    df = df[df['年龄_数值'] <= max_age]
+                df = df.drop('年龄_数值', axis=1)
+            
+            # 工作年限筛选
+            if min_work_years is not None or max_work_years is not None:
+                work_years_list = []
+                for idx, row in df.iterrows():
+                    work_years = self._calculate_work_years(row.get('工作经历', ''), row.get('年龄', ''))
+                    work_years_list.append(work_years)
+                
+                df['工作年限'] = work_years_list
+                
+                if min_work_years is not None:
+                    df = df[df['工作年限'] >= min_work_years]
+                if max_work_years is not None:
+                    df = df[df['工作年限'] <= max_work_years]
+                
+                # 移除临时列
+                df = df.drop('工作年限', axis=1)
+            
+            # 按录入时间倒序排列（最新的在前面）
+            if '录入时间' in df.columns:
+                df = df.sort_values('录入时间', ascending=False)
+            
+            # 将NaN值替换为None，确保不包含NaN值
+            df = df.fillna('')  # 先用空字符串填充NaN
+            
+            # 转换为字典格式
+            records = df.to_dict('records')
+            
+            # 将空字符串转换为None，确保没有NaN值
+            for record in records:
+                for key, value in record.items():
+                    if value == '' or pd.isna(value):
+                        record[key] = None
+                    # 确保数值类型不包含NaN
+                    elif isinstance(value, float) and pd.isna(value):
+                        record[key] = None
+            
+            return records
+            
+        except Exception as e:
+            print(f"筛选数据时出错: {str(e)}")
+            return []
+    
+    def _calculate_work_years(self, work_experience: str, age: str) -> int:
+        """计算工作年限"""
+        try:
+            import json
+            import re
+            from datetime import datetime
+            
+            # 如果没有工作经历，返回0
+            if not work_experience or work_experience == '':
+                return 0
+            
+            # 尝试解析JSON格式的工作经历
+            try:
+                work_list = json.loads(work_experience)
+                if not isinstance(work_list, list) or len(work_list) == 0:
+                    return 0
+                
+                total_months = 0
+                current_year = datetime.now().year
+                
+                for work in work_list:
+                    start_time = work.get('start_time', '')
+                    end_time = work.get('end_time', '')
+                    
+                    # 解析开始时间
+                    start_match = re.search(r'(\d{4})-(\d{1,2})', start_time)
+                    if not start_match:
+                        continue
+                    
+                    start_year = int(start_match.group(1))
+                    start_month = int(start_match.group(2))
+                    
+                    # 解析结束时间
+                    if '至今' in end_time or end_time == '':
+                        end_year = current_year
+                        end_month = datetime.now().month
+                    else:
+                        end_match = re.search(r'(\d{4})-(\d{1,2})', end_time)
+                        if not end_match:
+                            # 如果没有找到格式化时间，假设到当前时间
+                            end_year = current_year
+                            end_month = datetime.now().month
+                        else:
+                            end_year = int(end_match.group(1))
+                            end_month = int(end_match.group(2))
+                    
+                    # 计算月份差
+                    months = (end_year - start_year) * 12 + (end_month - start_month)
+                    total_months += max(0, months)
+                
+                # 转换为年份（向下取整）
+                work_years = total_months // 12
+                return max(0, work_years)
+                
+            except (json.JSONDecodeError, KeyError, TypeError):
+                # 如果JSON解析失败，尝试简单估算
+                # 根据年龄估算：假设22岁开始工作
+                try:
+                    age_num = int(age) if age and age.isdigit() else 22
+                    estimated_work_years = max(0, age_num - 22)
+                    return min(estimated_work_years, 15)  # 最多15年工作经验
+                except:
+                    return 0
+        
+        except Exception as e:
+            print(f"计算工作年限时出错: {str(e)}")
+            return 0 

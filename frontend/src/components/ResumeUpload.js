@@ -25,8 +25,11 @@ const ResumeUpload = ({ onUploadSuccess }) => {
   // 处理文件上传
   const handleUpload = async (file) => {
     // 验证文件类型
-    if (!file.name.endsWith('.docx')) {
-      message.error('仅支持 .docx 格式的文件');
+    const allowedExtensions = ['.docx', '.pdf'];
+    const isValidType = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+    
+    if (!isValidType) {
+      message.error('仅支持 .docx 和 .pdf 格式的文件');
       return false;
     }
 
@@ -88,7 +91,7 @@ const ResumeUpload = ({ onUploadSuccess }) => {
     fileList,
     onChange: ({ fileList }) => setFileList(fileList),
     maxCount: 1,
-    accept: '.docx',
+    accept: '.docx,.pdf',
     showUploadList: {
       showPreviewIcon: false,
       showRemoveIcon: !uploading,
@@ -220,7 +223,7 @@ const ResumeUpload = ({ onUploadSuccess }) => {
                 <Text strong>点击或拖拽文件到此区域上传</Text>
               </div>
               <div style={{ marginTop: 8 }}>
-                <Text type="secondary">支持 .docx 格式的简历文件，单个文件大小不超过 10MB</Text>
+                <Text type="secondary">支持 .docx 和 .pdf 格式的简历文件，单个文件大小不超过 10MB</Text>
               </div>
             </div>
           </Upload.Dragger>

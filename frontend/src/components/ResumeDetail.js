@@ -7,14 +7,26 @@ import {
 } from 'antd';
 import {
   DownloadOutlined,
-  PrinterOutlined
+  PrinterOutlined,
+  LeftOutlined,
+  RightOutlined
 } from '@ant-design/icons';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 const { Text } = Typography;
 
-const ResumeDetail = ({ resume, onClose }) => {
+const ResumeDetail = ({ 
+  resume, 
+  onClose,
+  // 翻页相关参数
+  currentIndex = -1,
+  totalCount = 0,
+  canGoPrevious = false,
+  canGoNext = false,
+  onPrevious,
+  onNext
+}) => {
   // 解析JSON格式的教育经历
   const parseEducationHistory = (educationStr) => {
     if (!educationStr) return null;
@@ -92,15 +104,53 @@ const ResumeDetail = ({ resume, onClose }) => {
     try {
       message.loading({ content: '正在生成PDF...', key: 'pdf-export' });
       
-      const element = document.getElementById('resume-detail-content');
-      const canvas = await html2canvas(element, {
-        scale: 2,
+      // 创建一个临时容器，包含标题和简历内容
+      const originalElement = document.getElementById('resume-detail-content');
+      const tempContainer = document.createElement('div');
+      tempContainer.style.backgroundColor = '#ffffff';
+      tempContainer.style.padding = '20px';
+      tempContainer.style.fontFamily = '宋体, SimSun, "Microsoft YaHei", sans-serif';
+      
+      // 添加标题
+      const titleElement = document.createElement('h1');
+      titleElement.textContent = '个人简历';
+      titleElement.style.textAlign = 'center';
+      titleElement.style.fontSize = '24px';
+      titleElement.style.fontWeight = 'bold';
+      titleElement.style.marginBottom = '30px';
+      titleElement.style.marginTop = '0';
+      titleElement.style.color = '#000';
+      
+      // 克隆原始内容
+      const contentClone = originalElement.cloneNode(true);
+      contentClone.style.boxShadow = 'none';
+      contentClone.style.border = 'none';
+      
+      // 组装临时容器
+      tempContainer.appendChild(titleElement);
+      tempContainer.appendChild(contentClone);
+      
+      // 将临时容器添加到页面（但不可见）
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.top = '0';
+      document.body.appendChild(tempContainer);
+      
+      // 生成canvas - 降低分辨率以减小文件大小
+      const canvas = await html2canvas(tempContainer, {
+        scale: 1.2, // 从2降低到1.2，减小文件大小
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        logging: false, // 禁用日志以提高性能
+        removeContainer: true // 自动清理容器
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      // 移除临时容器
+      document.body.removeChild(tempContainer);
+
+      // 使用JPEG格式并压缩以减小文件大小
+      const imgData = canvas.toDataURL('image/jpeg', 0.85); // JPEG格式，85%质量
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210;
       const pageHeight = 295;
@@ -109,13 +159,13 @@ const ResumeDetail = ({ resume, onClose }) => {
 
       let position = 0;
 
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
         heightLeft -= pageHeight;
       }
 
@@ -124,6 +174,70 @@ const ResumeDetail = ({ resume, onClose }) => {
     } catch (error) {
       console.error('PDF导出失败:', error);
       message.error({ content: 'PDF导出失败，请重试', key: 'pdf-export' });
+    }
+  };
+
+  // 导出Word功能
+  const exportToWord = async () => {
+    try {
+      message.loading({ content: '正在生成Word文档...', key: 'word-export' });
+      
+      console.log('开始Word导出，简历数据:', resume);
+      
+      const response = await fetch('http://localhost:8000/export-word', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          resume: resume
+        })
+      });
+
+      console.log('API响应状态:', response.status, response.statusText);
+
+      if (!response.ok) {
+        let errorMessage = 'Word导出失败';
+        try {
+          const errorData = await response.text();
+          console.error('API错误响应:', errorData);
+          const jsonError = JSON.parse(errorData);
+          errorMessage = jsonError.detail || errorMessage;
+        } catch (e) {
+          console.error('解析错误响应失败:', e);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const blob = await response.blob();
+      console.log('下载文件大小:', blob.size, 'bytes');
+      
+      if (blob.size === 0) {
+        throw new Error('生成的Word文档为空');
+      }
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `${resume.姓名 || '简历'}_简历.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      message.success({ 
+        content: `Word文档导出成功！文件名：${resume.姓名 || '简历'}_简历.docx`, 
+        key: 'word-export', 
+        duration: 3 
+      });
+    } catch (error) {
+      console.error('Word导出失败:', error);
+      message.error({ 
+        content: error.message || 'Word导出失败，请重试', 
+        key: 'word-export', 
+        duration: 3 
+      });
     }
   };
 
@@ -171,16 +285,60 @@ const ResumeDetail = ({ resume, onClose }) => {
   return (
     <div>
       {/* 操作按钮 */}
-      <div style={{ marginBottom: 16, textAlign: 'right' }}>
-        <Space>
-          <Button type="primary" icon={<DownloadOutlined />} onClick={exportToPDF}>
-            导出PDF
-          </Button>
-          <Button icon={<PrinterOutlined />} onClick={handlePrint}>
-            打印
-          </Button>
-          <Button onClick={onClose}>关闭</Button>
-        </Space>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* 左侧：上一个按钮 */}
+        <div>
+          {totalCount > 1 ? (
+            <Button 
+              type="default" 
+              icon={<LeftOutlined />} 
+              onClick={onPrevious}
+              disabled={!canGoPrevious}
+            >
+              上一个
+            </Button>
+          ) : (
+            <div style={{ width: 88 }}></div> // 占位，保持布局平衡
+          )}
+        </div>
+        
+        {/* 中间：进度显示和功能按钮 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {totalCount > 1 && (
+            <Text type="secondary" style={{ fontSize: '14px', fontWeight: 500 }}>
+              {currentIndex + 1} / {totalCount}
+            </Text>
+          )}
+          <Space>
+            <Button type="primary" icon={<DownloadOutlined />} onClick={exportToPDF}>
+              导出PDF
+            </Button>
+            {/* 暂时隐藏Word导出功能 */}
+            {/* <Button type="default" icon={<FileWordOutlined />} onClick={exportToWord}>
+              导出Word
+            </Button> */}
+            <Button icon={<PrinterOutlined />} onClick={handlePrint}>
+              打印
+            </Button>
+            <Button onClick={onClose}>关闭</Button>
+          </Space>
+        </div>
+        
+        {/* 右侧：下一个按钮 */}
+        <div>
+          {totalCount > 1 ? (
+            <Button 
+              type="default" 
+              icon={<RightOutlined />} 
+              onClick={onNext}
+              disabled={!canGoNext}
+            >
+              下一个
+            </Button>
+          ) : (
+            <div style={{ width: 88 }}></div> // 占位，保持布局平衡
+          )}
+        </div>
       </div>
 
       {/* 简历内容 - CSS Grid布局 */}

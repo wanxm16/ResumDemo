@@ -14,9 +14,10 @@ import {
   PlusOutlined,
   MinusCircleOutlined,
   SaveOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  RobotOutlined
 } from '@ant-design/icons';
-import { submitResumeForm } from '../services/api';
+import { submitResumeForm, generateResumeData } from '../services/api';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
@@ -34,8 +35,8 @@ const ResumeForm = ({ onSuccess }) => {
     try {
       // 处理教育经历数据
       const educationData = values.education?.map(edu => ({
-        start_time: edu.time_range?.[0]?.format('YYYY-MM') || '',
-        end_time: edu.time_range?.[1]?.format('YYYY-MM') || '',
+        start_time: edu.time_range?.[0] ? edu.time_range[0].format('YYYY-MM') : '',
+        end_time: edu.time_range?.[1] ? edu.time_range[1].format('YYYY-MM') : '',
         school: edu.school || '',
         degree: edu.degree || '',
         major: edu.major || ''
@@ -43,8 +44,8 @@ const ResumeForm = ({ onSuccess }) => {
 
       // 处理工作经历数据
       const workData = values.work?.map(work => ({
-        start_time: work.time_range?.[0]?.format('YYYY-MM') || '',
-        end_time: work.time_range?.[1]?.format('YYYY-MM') || work.end_time || '',
+        start_time: work.time_range?.[0] ? work.time_range[0].format('YYYY-MM') : '',
+        end_time: work.time_range?.[1] ? work.time_range[1].format('YYYY-MM') : (work.end_time || ''),
         company: work.company || '',
         position: work.position || '',
         responsibilities: work.responsibilities || ''
@@ -67,12 +68,14 @@ const ResumeForm = ({ onSuccess }) => {
         手机: values.手机 || '',
         邮箱: values.邮箱 || '',
         教育经历: JSON.stringify(educationData),
-        荣誉奖项: values.荣誉奖项 || '',
-        技能证书: values.技能证书 || '',
+        荣誉奖项: Array.isArray(values.荣誉奖项) ? values.荣誉奖项.join(',') : (values.荣誉奖项 || ''),
+        技能证书: Array.isArray(values.技能证书) ? values.技能证书.join(',') : (values.技能证书 || ''),
         工作经历: JSON.stringify(workData),
-        兴趣爱好: values.兴趣爱好 || '',
+        兴趣爱好: Array.isArray(values.兴趣爱好) ? values.兴趣爱好.join(',') : (values.兴趣爱好 || ''),
         自我评价: values.自我评价 || ''
       };
+
+
 
       const response = await submitResumeForm(submitData);
       if (response.success) {
@@ -94,6 +97,126 @@ const ResumeForm = ({ onSuccess }) => {
   const onReset = () => {
     form.resetFields();
     message.info('表单已重置');
+  };
+
+  // AI生成测试数据
+  const onGenerateData = async () => {
+    setLoading(true);
+    
+    // 显示详细的进度提示
+    const progressMessages = [
+      'AI正在分析数据模式...',
+      '正在生成个人信息...',
+      '正在构建教育经历...',
+      '正在创建工作履历...',
+      '正在完善简历细节...'
+    ];
+    
+    let messageIndex = 0;
+    message.loading({ content: progressMessages[messageIndex], key: 'generating' });
+    
+    // 模拟进度更新
+    const progressInterval = setInterval(() => {
+      messageIndex = (messageIndex + 1) % progressMessages.length;
+      message.loading({ content: progressMessages[messageIndex], key: 'generating' });
+    }, 8000); // 每8秒更新一次提示
+    
+    try {
+      const response = await generateResumeData();
+      clearInterval(progressInterval); // 清除进度更新
+      
+      if (response.success && response.data) {
+        const aiData = response.data;
+        
+        // 处理教育经历数据
+        const educationFields = [];
+        if (aiData.教育经历 && Array.isArray(aiData.教育经历)) {
+          aiData.教育经历.forEach(edu => {
+            educationFields.push({
+              time_range: [
+                edu.start_time ? dayjs(edu.start_time, 'YYYY-MM') : null,
+                edu.end_time ? dayjs(edu.end_time, 'YYYY-MM') : null
+              ],
+              school: edu.school || '',
+              degree: edu.degree || '',
+              major: edu.major || ''
+            });
+          });
+        }
+        
+        // 处理工作经历数据
+        const workFields = [];
+        if (aiData.工作经历 && Array.isArray(aiData.工作经历)) {
+          aiData.工作经历.forEach(work => {
+            workFields.push({
+              time_range: [
+                work.start_time ? dayjs(work.start_time, 'YYYY-MM') : null,
+                work.end_time && work.end_time !== '至今' ? dayjs(work.end_time, 'YYYY-MM') : null
+              ],
+              end_time: work.end_time === '至今' ? '至今' : '',
+              company: work.company || '',
+              position: work.position || '',
+              responsibilities: work.responsibilities || ''
+            });
+          });
+        }
+        
+        // 构建表单数据
+        const formData = {
+          姓名: aiData.姓名 || '',
+          性别: aiData.性别 || '',
+          年龄: aiData.年龄 ? parseInt(aiData.年龄) : undefined,
+          政治面貌: aiData.政治面貌 || '',
+          体重: aiData.体重 ? parseInt(aiData.体重) : undefined,
+          籍贯: aiData.籍贯 || '',
+          健康状况: aiData.健康状况 || '',
+          身高: aiData.身高 ? parseInt(aiData.身高) : undefined,
+          学历: aiData.学历 || '',
+          毕业院校: aiData.毕业院校 || '',
+          专业: aiData.专业 || '',
+          求职意向: aiData.求职意向 || '',
+          手机: aiData.手机 || '',
+          邮箱: aiData.邮箱 || '',
+          荣誉奖项: aiData.荣誉奖项 || '',
+          技能证书: aiData.技能证书 || '',
+          兴趣爱好: aiData.兴趣爱好 || '',
+          自我评价: aiData.自我评价 || '',
+          education: educationFields,
+          work: workFields
+        };
+        
+        // 填充表单
+        form.setFieldsValue(formData);
+        
+        message.success({ 
+          content: `AI生成成功！创建了${aiData.姓名}（${aiData.年龄}岁）的简历数据`, 
+          key: 'generating', 
+          duration: 3 
+        });
+      } else {
+        message.error({ content: response.message || 'AI生成数据失败', key: 'generating', duration: 2 });
+      }
+    } catch (error) {
+      clearInterval(progressInterval); // 确保清除进度更新
+      console.error('AI生成数据失败:', error);
+      
+      // 根据错误类型显示不同提示
+      let errorMessage = 'AI生成数据失败，请重试';
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMessage = 'AI生成耗时较长，已增加重试机制，请稍后再试';
+      } else if (error.response?.status === 408) {
+        errorMessage = 'AI生成超时，服务正在重试中，请稍等片刻再试';
+      } else if (error.response?.status >= 500) {
+        errorMessage = '服务器繁忙，AI生成暂时失败，请稍后重试';
+      } else if (error.response?.status === 502) {
+        errorMessage = 'AI服务连接异常，请检查网络后重试';
+      }
+      
+      message.error({ content: errorMessage, key: 'generating', duration: 3 });
+    } finally {
+      clearInterval(progressInterval); // 确保清除进度更新
+      setLoading(false);
+    }
   };
 
   // 通用单元格样式
@@ -128,9 +251,27 @@ const ResumeForm = ({ onSuccess }) => {
   return (
     <div style={{ padding: '24px', backgroundColor: '#fff', minHeight: '100vh' }}>
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
-        <Title level={3} style={{ margin: '0 0 24px 0', textAlign: 'center', fontWeight: 'normal' }}>
+        <Title level={3} style={{ margin: '0 0 16px 0', textAlign: 'center', fontWeight: 'normal' }}>
           简历信息填写
         </Title>
+        
+        {/* AI生成按钮 */}
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <Button 
+            type="link" 
+            size="small"
+            icon={<RobotOutlined />} 
+            onClick={onGenerateData}
+            loading={loading}
+            style={{ 
+              color: '#1890ff',
+              padding: 0,
+              height: 'auto'
+            }}
+          >
+            AI生成测试数据
+          </Button>
+        </div>
         
         <Form
           form={form}
