@@ -1,0 +1,123 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 简历上传解析系统项目概览
+
+## 🎯 项目目标
+
+本项目是一个现代化的简历管理系统，旨在提供：
+- 智能简历解析：支持Word(.docx)和PDF格式文件的自动解析
+- 数据可视化：多维度统计分析和图表展示
+- AI数据生成：基于DeepSeek的智能测试数据生成
+- 完整的CRUD操作：创建、查看、编辑、删除简历记录
+- 现代化界面：基于React + Ant Design的响应式设计
+
+## 📁 项目架构
+
+### 核心目录结构
+- [backend/](mdc:backend) - FastAPI后端服务
+- [frontend/](mdc:frontend) - React前端应用
+- [data/](mdc:data) - CSV数据存储
+- [简历/](mdc:简历) - 测试简历文件
+- [logs/](mdc:logs) - 系统日志文件
+
+### 启动脚本
+- [start_all.sh](mdc:start_all.sh) - 一键启动所有服务
+- [start_backend.sh](mdc:start_backend.sh) - 后端服务启动
+- [start_frontend.sh](mdc:start_frontend.sh) - 前端服务启动
+- [stop_all.sh](mdc:stop_all.sh) - 优雅停止所有服务
+- [restart_all.sh](mdc:restart_all.sh) - 智能重启服务
+- [status.sh](mdc:status.sh) - 系统状态检查
+
+### 配置文件
+- [README.md](mdc:README.md) - 项目说明文档
+- [.gitignore](mdc:.gitignore) - Git忽略规则
+- [package.json](mdc:package.json) - 根目录包配置
+
+## 🏗️ 技术栈
+
+### 后端技术栈
+- **框架**: FastAPI (Python 3.8+)
+- **文档解析**: python-docx, pdfplumber, easyocr
+- **数据处理**: pandas, numpy
+- **AI集成**: DeepSeek API
+- **文件处理**: aiofiles, tempfile
+- **Web服务**: uvicorn (ASGI服务器)
+
+### 前端技术栈
+- **框架**: React 18 + Ant Design 5
+- **图表库**: Recharts
+- **包管理**: pnpm
+- **HTTP客户端**: axios
+- **状态管理**: React Hooks
+- **构建工具**: Create React App
+
+## 🌐 服务配置
+
+### 端口分配
+- **前端服务**: http://localhost:4000
+- **后端API**: http://localhost:8080
+- **API文档**: http://localhost:8080/docs
+
+### 数据流向
+1. **文件上传**: frontend → backend/upload → 临时文件 → 解析器
+2. **数据存储**: 解析结果 → CSV文件 → 数据库抽象层
+3. **数据展示**: CSV → pandas → JSON → frontend → 图表组件
+4. **AI生成**: frontend → backend/generate → DeepSeek API → 数据存储
+
+## 🔧 开发规范
+
+### 代码结构原则
+- **分层架构**: 严格分离前端、后端、数据层
+- **模块化设计**: 组件化开发，单一职责原则
+- **RESTful API**: 标准化的API接口设计
+- **错误处理**: 统一的错误处理和用户反馈机制
+
+### 命名约定
+- **文件命名**: 使用kebab-case（如start-all.sh）
+- **组件命名**: 使用PascalCase（如ResumeUpload.js）
+- **函数命名**: 使用camelCase（如parseResume）
+- **常量命名**: 使用UPPER_SNAKE_CASE（如API_BASE_URL）
+
+### 依赖管理
+- **后端**: 使用requirements.txt + 虚拟环境
+- **前端**: 使用pnpm + package.json
+- **版本锁定**: 确保生产环境一致性
+
+## 📊 数据模型
+
+### 简历数据结构
+核心字段包括：
+- 基本信息：姓名、性别、年龄、联系方式
+- 教育背景：学历、院校、专业、时间段
+- 工作经历：公司、职位、职责、时间段
+- 其他信息：技能、证书、爱好、自评
+
+### 存储格式
+- **主存储**: CSV格式文件（data/resume.csv）
+- **复杂字段**: JSON字符串存储（教育经历、工作经历）
+- **时间戳**: 自动记录录入时间
+- **唯一标识**: 姓名_录入时间格式
+
+## 🚀 部署和运维
+
+### 开发环境启动
+```bash
+./start_all.sh          # 一键启动
+./status.sh             # 检查状态
+./stop_all.sh           # 停止服务
+./restart_all.sh --clean # 清理重启
+```
+
+### 日志管理
+- **后端日志**: logs/backend.log
+- **前端日志**: logs/frontend.log
+- **PID管理**: logs/*.pid文件
+
+### 监控和维护
+- 使用status.sh进行健康检查
+- 定期清理日志文件
+- 监控磁盘空间和系统资源
+

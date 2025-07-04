@@ -1,0 +1,421 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 前端架构设计规范
+
+## 📁 目录结构
+
+```
+frontend/
+├── public/                      # 静态资源
+│   └── index.html              # HTML模板
+├── src/                        # 源代码
+│   ├── components/             # React组件
+│   │   ├── HomePage.js         # 首页组件
+│   │   ├── Statistics.js       # 统计页面
+│   │   ├── ResumeList.js       # 简历列表
+│   │   ├── ResumeUpload.js     # 文件上传
+│   │   ├── ResumeForm.js       # 表单填写
+│   │   └── ResumeDetail.js     # 简历详情
+│   ├── services/               # API服务
+│   │   └── api.js              # HTTP请求封装
+│   ├── App.js                  # 主应用组件
+│   ├── index.js                # 应用入口
+│   └── index.css               # 全局样式
+├── package.json                # 依赖配置
+├── pnpm-lock.yaml             # 依赖锁定
+└── nginx.conf                  # Nginx配置
+```
+
+## 🏗️ 架构设计
+
+### 核心文件说明
+
+#### [frontend/src/App.js](mdc:frontend/src/App.js)
+- **职责**: 主应用组件，路由管理和布局
+- **核心功能**:
+  - 页面路由和导航逻辑
+  - 全局状态管理
+  - 布局结构定义
+  - 菜单系统实现
+
+#### [frontend/src/components/HomePage.js](mdc:frontend/src/components/HomePage.js)
+- **职责**: 系统首页展示
+- **设计特色**:
+  - 渐变横幅背景设计
+  - 功能特色卡片展示
+  - 实时统计数据显示
+  - 快速导航按钮
+
+#### [frontend/src/components/Statistics.js](mdc:frontend/src/components/Statistics.js)
+- **职责**: 数据可视化统计页面
+- **图表类型**:
+  - 饼图：性别、学历分布
+  - 柱状图：年龄、专业分布
+  - 面积图：工作年限分布
+  - 折线图：录入时间趋势
+
+#### [frontend/src/components/ResumeUpload.js](mdc:frontend/src/components/ResumeUpload.js)
+- **职责**: 文件上传界面
+- **功能特性**:
+  - 拖拽上传支持
+  - 文件格式验证
+  - 上传进度显示
+  - 解析结果展示
+
+#### [frontend/src/components/ResumeForm.js](mdc:frontend/src/components/ResumeForm.js)
+- **职责**: 在线简历表单
+- **表单设计**:
+  - 分步骤表单向导
+  - 实时数据验证
+  - 动态字段添加
+  - 自动保存功能
+
+#### [frontend/src/components/ResumeList.js](mdc:frontend/src/components/ResumeList.js)
+- **职责**: 简历列表展示和管理
+- **功能模块**:
+  - 表格化数据展示
+  - 搜索和筛选功能
+  - 分页和排序
+  - 批量操作支持
+
+#### [frontend/src/services/api.js](mdc:frontend/src/services/api.js)
+- **职责**: API请求封装和管理
+- **核心功能**:
+  - HTTP客户端配置
+  - 请求/响应拦截器
+  - 错误处理统一化
+  - API接口定义
+
+#### [frontend/package.json](mdc:frontend/package.json)
+- **职责**: 前端依赖和脚本管理
+- **关键依赖**:
+  - React + React DOM
+  - Ant Design + Icons
+  - Recharts图表库
+  - Axios HTTP客户端
+
+## 🎨 组件设计规范
+
+### 组件结构模板
+```jsx
+import React, { useState, useEffect } from 'react';
+import { Card, Button, message } from 'antd';
+import api from '../services/api';
+
+const ComponentName = ({ props }) => {
+  // 1. 状态定义
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // 2. 副作用
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // 3. 事件处理函数
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const response = await api.getData();
+      setData(response.data);
+    } catch (error) {
+      message.error('数据加载失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 4. 渲染逻辑
+  return (
+    <Card title="组件标题" loading={loading}>
+      {/* 组件内容 */}
+    </Card>
+  );
+};
+
+export default ComponentName;
+```
+
+### 命名规范
+```jsx
+// ✅ 组件命名 - PascalCase
+const ResumeUpload = () => {};
+const StatisticsChart = () => {};
+
+// ✅ 函数命名 - camelCase
+const handleFileUpload = () => {};
+const fetchStatisticsData = () => {};
+
+// ✅ 常量命名 - UPPER_SNAKE_CASE
+const API_BASE_URL = 'http://localhost:8080';
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+// ✅ 状态变量 - camelCase
+const [resumeList, setResumeList] = useState([]);
+const [isLoading, setIsLoading] = useState(false);
+```
+
+## 🔧 开发规范
+
+### 状态管理
+```jsx
+// ✅ 使用React Hooks进行状态管理
+const [currentPage, setCurrentPage] = useState('home');
+const [resumeData, setResumeData] = useState(null);
+
+// ✅ 复杂状态使用useReducer
+const [state, dispatch] = useReducer(resumeReducer, initialState);
+
+// ✅ 全局状态使用Context API
+const ResumeContext = createContext();
+```
+
+### 错误处理
+```jsx
+// ✅ 统一错误处理
+const handleError = (error, defaultMessage = '操作失败') => {
+  const errorMessage = error.response?.data?.message || defaultMessage;
+  message.error(errorMessage);
+  console.error('Error:', error);
+};
+
+// ✅ 组件错误边界
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <div>Something went wrong.</div>;
+    }
+    return this.props.children;
+  }
+}
+```
+
+### 表单处理
+```jsx
+// ✅ 使用Ant Design Form组件
+import { Form, Input, Button } from 'antd';
+
+const ResumeForm = () => {
+  const [form] = Form.useForm();
+
+  const onFinish = (values) => {
+    console.log('Form values:', values);
+  };
+
+  return (
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={onFinish}
+      validateTrigger="onBlur"
+    >
+      <Form.Item
+        name="name"
+        label="姓名"
+        rules={[{ required: true, message: '请输入姓名' }]}
+      >
+        <Input placeholder="请输入姓名" />
+      </Form.Item>
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          提交
+        </Button>
+      </Form.Item>
+    </Form>
+  );
+};
+```
+
+## 📊 图表组件规范
+
+### Recharts使用规范
+```jsx
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+
+// ✅ 图表组件封装
+const StatisticsPieChart = ({ data, title }) => {
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+  return (
+    <Card title={title}>
+      <ResponsiveContainer width="100%" height={300}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            outerRadius={80}
+            fill="#8884d8"
+            dataKey="value"
+            label
+          >
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+    </Card>
+  );
+};
+```
+
+## 🎨 样式规范
+
+### CSS-in-JS和内联样式
+```jsx
+// ✅ 主题色彩定义
+const theme = {
+  primary: '#1890ff',
+  success: '#52c41a',
+  warning: '#faad14',
+  error: '#f5222d',
+  textPrimary: '#262626',
+  textSecondary: '#8c8c8c'
+};
+
+// ✅ 样式对象
+const styles = {
+  header: {
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    padding: '2rem 0',
+    textAlign: 'center'
+  },
+  card: {
+    marginBottom: '1rem',
+    borderRadius: '8px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+  }
+};
+```
+
+### 响应式设计
+```jsx
+// ✅ 使用Ant Design的栅格系统
+import { Row, Col } from 'antd';
+
+const ResponsiveLayout = () => (
+  <Row gutter={[16, 16]}>
+    <Col xs={24} sm={12} md={8} lg={6}>
+      <Card>内容1</Card>
+    </Col>
+    <Col xs={24} sm={12} md={8} lg={6}>
+      <Card>内容2</Card>
+    </Col>
+  </Row>
+);
+```
+
+## 🚀 性能优化
+
+### 组件优化
+```jsx
+// ✅ 使用React.memo防止不必要的重渲染
+const MemoizedComponent = React.memo(({ data }) => {
+  return <div>{data}</div>;
+});
+
+// ✅ 使用useMemo缓存计算结果
+const expensiveValue = useMemo(() => {
+  return computeExpensiveValue(data);
+}, [data]);
+
+// ✅ 使用useCallback缓存函数
+const handleClick = useCallback(() => {
+  doSomething(id);
+}, [id]);
+```
+
+### 数据获取优化
+```jsx
+// ✅ 防抖搜索
+import { debounce } from 'lodash';
+
+const SearchInput = () => {
+  const debouncedSearch = useCallback(
+    debounce((value) => {
+      performSearch(value);
+    }, 300),
+    []
+  );
+
+  return (
+    <Input
+      placeholder="搜索简历"
+      onChange={(e) => debouncedSearch(e.target.value)}
+    />
+  );
+};
+```
+
+## 🔍 调试和测试
+
+### 调试工具
+```jsx
+// ✅ 开发环境调试
+if (process.env.NODE_ENV === 'development') {
+  console.log('Debug info:', data);
+}
+
+// ✅ 使用React Developer Tools
+// 在组件中添加displayName便于调试
+ComponentName.displayName = 'ComponentName';
+```
+
+### 错误监控
+```jsx
+// ✅ 全局错误监听
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+});
+
+// ✅ 组件性能监控
+const ProfiledComponent = React.memo(Component);
+```
+
+## 📱 用户体验优化
+
+### 加载状态
+```jsx
+// ✅ 加载状态管理
+const [loading, setLoading] = useState(false);
+
+return (
+  <Spin spinning={loading} tip="加载中...">
+    <div>{content}</div>
+  </Spin>
+);
+```
+
+### 用户反馈
+```jsx
+// ✅ 操作反馈
+import { message, notification } from 'antd';
+
+const handleSuccess = () => {
+  message.success('操作成功！');
+};
+
+const handleError = (error) => {
+  notification.error({
+    message: '操作失败',
+    description: error.message,
+    duration: 4.5,
+  });
+};
+```

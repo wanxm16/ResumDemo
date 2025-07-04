@@ -242,7 +242,8 @@ class DataStorage:
             return False
     
     def filter_resumes(self, keyword: str = '', min_age: int = None, max_age: int = None, 
-                      min_work_years: int = None, max_work_years: int = None) -> List[dict]:
+                      min_work_years: int = None, max_work_years: int = None,
+                      gender: str = None, political_status: str = None) -> List[dict]:
         """根据多个条件筛选简历"""
         try:
             df = pd.read_csv(self.csv_path, encoding='utf-8')
@@ -266,6 +267,14 @@ class DataStorage:
                 if max_age is not None:
                     df = df[df['年龄_数值'] <= max_age]
                 df = df.drop('年龄_数值', axis=1)
+            
+            # 性别筛选
+            if gender is not None and gender != '':
+                df = df[df['性别'].astype(str).str.contains(gender, case=False, na=False)]
+            
+            # 政治面貌筛选
+            if political_status is not None and political_status != '':
+                df = df[df['政治面貌'].astype(str).str.contains(political_status, case=False, na=False)]
             
             # 工作年限筛选
             if min_work_years is not None or max_work_years is not None:

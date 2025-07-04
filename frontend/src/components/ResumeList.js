@@ -15,16 +15,18 @@ import {
   Row,
   Col,
   InputNumber,
-  Form
+  Form,
+  Select
 } from 'antd';
 import {
   SearchOutlined,
   EyeOutlined,
   ReloadOutlined,
   UserOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  DownloadOutlined
 } from '@ant-design/icons';
-import { getResumes, deleteResume } from '../services/api';
+import { getResumes, deleteResume, exportToExcel } from '../services/api';
 import ResumeDetail from './ResumeDetail';
 
 const { Text } = Typography;
@@ -40,7 +42,9 @@ const ResumeList = ({ refreshTrigger }) => {
     minAge: null,
     maxAge: null,
     minWorkYears: null,
-    maxWorkYears: null
+    maxWorkYears: null,
+    gender: '',
+    politicalStatus: ''
   });
 
   // 加载简历列表
@@ -78,7 +82,9 @@ const ResumeList = ({ refreshTrigger }) => {
       minAge: null,
       maxAge: null,
       minWorkYears: null,
-      maxWorkYears: null
+      maxWorkYears: null,
+      gender: '',
+      politicalStatus: ''
     });
     loadResumes('', {});
   };
@@ -122,6 +128,43 @@ const ResumeList = ({ refreshTrigger }) => {
     } catch (error) {
       console.error('删除简历失败:', error);
       message.error('删除简历失败，请重试');
+    }
+  };
+
+  // 导出Excel
+  const handleExportExcel = async () => {
+    try {
+      message.loading('正在导出Excel文件...', 2);
+      
+      const response = await exportToExcel(filters, searchKeyword);
+      
+      if (response.success && response.data) {
+        // 将hex字符串转换为二进制数据
+        const hexString = response.data;
+        const bytes = new Uint8Array(hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+        
+        // 创建blob对象
+        const blob = new Blob([bytes], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+        
+        // 创建下载链接
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = response.filename || '简历数据导出.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        message.success(response.message || '导出成功');
+      } else {
+        message.error('导出失败：' + response.message);
+      }
+    } catch (error) {
+      console.error('导出Excel失败:', error);
+      message.error('导出Excel失败，请重试');
     }
   };
 
@@ -296,13 +339,22 @@ const ResumeList = ({ refreshTrigger }) => {
           </Space>
         }
         extra={
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={() => loadResumes(searchKeyword, filters)}
-            loading={loading}
-          >
-            刷新
-          </Button>
+          <Space>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={handleExportExcel}
+              disabled={filteredResumes.length === 0}
+            >
+              导出Excel
+            </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={() => loadResumes(searchKeyword, filters)}
+              loading={loading}
+            >
+              刷新
+            </Button>
+          </Space>
         }
       >
         {/* 搜索和筛选面板 */}
@@ -320,81 +372,157 @@ const ResumeList = ({ refreshTrigger }) => {
           </div>
           
           {/* 筛选面板 */}
-          <div style={{ padding: '16px 0', borderBottom: '1px solid #f0f0f0' }}>
-            <Form layout="horizontal">
-              <Row gutter={16}>
-                <Col span={12}>
-                  <div>
-                    <Text style={{ fontWeight: 500, color: '#262626', marginBottom: 8, display: 'block' }}>年龄筛选</Text>
-                    <Row gutter={8}>
-                      <Col span={12}>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>最小年龄</Text>
-                        <InputNumber
-                          placeholder="最小年龄"
-                          value={filters.minAge}
-                          onChange={(value) => setFilters(prev => ({ ...prev, minAge: value }))}
-                          min={18}
-                          max={65}
-                          style={{ width: '100%' }}
-                        />
-                      </Col>
-                      <Col span={12}>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>最大年龄</Text>
-                        <InputNumber
-                          placeholder="最大年龄"
-                          value={filters.maxAge}
-                          onChange={(value) => setFilters(prev => ({ ...prev, maxAge: value }))}
-                          min={18}
-                          max={65}
-                          style={{ width: '100%' }}
-                        />
-                      </Col>
-                    </Row>
-                  </div>
-                </Col>
-                <Col span={12}>
-                  <div>
-                    <Text style={{ fontWeight: 500, color: '#262626', marginBottom: 8, display: 'block' }}>工作年限筛选</Text>
-                    <Row gutter={8}>
-                      <Col span={12}>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>最小年限</Text>
-                        <InputNumber
-                          placeholder="最小年限"
-                          value={filters.minWorkYears}
-                          onChange={(value) => setFilters(prev => ({ ...prev, minWorkYears: value }))}
-                          min={0}
-                          max={30}
-                          style={{ width: '100%' }}
-                        />
-                      </Col>
-                      <Col span={12}>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>最大年限</Text>
-                        <InputNumber
-                          placeholder="最大年限"
-                          value={filters.maxWorkYears}
-                          onChange={(value) => setFilters(prev => ({ ...prev, maxWorkYears: value }))}
-                          min={0}
-                          max={30}
-                          style={{ width: '100%' }}
-                        />
-                      </Col>
-                    </Row>
-                  </div>
-                </Col>
-              </Row>
-              <Row gutter={8} style={{ marginTop: 16 }}>
-                <Col>
-                  <Button type="primary" onClick={applyFilters}>
-                    搜索与筛选
-                  </Button>
-                </Col>
-                <Col>
-                  <Button onClick={resetFilters}>
-                    重置
-                  </Button>
-                </Col>
-              </Row>
-            </Form>
+          <div style={{ 
+            padding: '16px 0', 
+            borderBottom: '1px solid #e8e8e8',
+            marginBottom: '24px' 
+          }}>
+            <Row gutter={[24, 16]} align="middle">
+              <Col span={5}>
+                <div>
+                  <Text style={{ 
+                    fontWeight: 600, 
+                    color: '#1f1f1f', 
+                    fontSize: '14px',
+                    marginBottom: 8, 
+                    display: 'block'
+                  }}>
+                    年龄筛选
+                  </Text>
+                  <Row gutter={8}>
+                    <Col span={11}>
+                      <InputNumber
+                        placeholder="最小年龄"
+                        value={filters.minAge}
+                        onChange={(value) => setFilters(prev => ({ ...prev, minAge: value }))}
+                        min={18}
+                        max={65}
+                        style={{ width: '100%' }}
+                        size="small"
+                      />
+                    </Col>
+                    <Col span={2} style={{ textAlign: 'center', lineHeight: '24px' }}>
+                      <Text type="secondary">-</Text>
+                    </Col>
+                    <Col span={11}>
+                      <InputNumber
+                        placeholder="最大年龄"
+                        value={filters.maxAge}
+                        onChange={(value) => setFilters(prev => ({ ...prev, maxAge: value }))}
+                        min={18}
+                        max={65}
+                        style={{ width: '100%' }}
+                        size="small"
+                      />
+                    </Col>
+                  </Row>
+                </div>
+              </Col>
+              <Col span={5}>
+                <div>
+                  <Text style={{ 
+                    fontWeight: 600, 
+                    color: '#1f1f1f', 
+                    fontSize: '14px',
+                    marginBottom: 8, 
+                    display: 'block'
+                  }}>
+                    工作年限筛选
+                  </Text>
+                  <Row gutter={8}>
+                    <Col span={11}>
+                      <InputNumber
+                        placeholder="最小年限"
+                        value={filters.minWorkYears}
+                        onChange={(value) => setFilters(prev => ({ ...prev, minWorkYears: value }))}
+                        min={0}
+                        max={30}
+                        style={{ width: '100%' }}
+                        size="small"
+                      />
+                    </Col>
+                    <Col span={2} style={{ textAlign: 'center', lineHeight: '24px' }}>
+                      <Text type="secondary">-</Text>
+                    </Col>
+                    <Col span={11}>
+                      <InputNumber
+                        placeholder="最大年限"
+                        value={filters.maxWorkYears}
+                        onChange={(value) => setFilters(prev => ({ ...prev, maxWorkYears: value }))}
+                        min={0}
+                        max={30}
+                        style={{ width: '100%' }}
+                        size="small"
+                      />
+                    </Col>
+                  </Row>
+                </div>
+              </Col>
+              <Col span={4}>
+                <div>
+                  <Text style={{ 
+                    fontWeight: 600, 
+                    color: '#1f1f1f', 
+                    fontSize: '14px',
+                    marginBottom: 8, 
+                    display: 'block'
+                  }}>
+                    性别筛选
+                  </Text>
+                  <Select
+                    placeholder="选择性别"
+                    value={filters.gender}
+                    onChange={(value) => setFilters(prev => ({ ...prev, gender: value }))}
+                    style={{ width: '100%' }}
+                    size="small"
+                    allowClear
+                    options={[
+                      { value: '男', label: '男' },
+                      { value: '女', label: '女' }
+                    ]}
+                  />
+                </div>
+              </Col>
+              <Col span={5}>
+                <div>
+                  <Text style={{ 
+                    fontWeight: 600, 
+                    color: '#1f1f1f', 
+                    fontSize: '14px',
+                    marginBottom: 8, 
+                    display: 'block'
+                  }}>
+                    政治面貌筛选
+                  </Text>
+                  <Select
+                    placeholder="选择政治面貌"
+                    value={filters.politicalStatus}
+                    onChange={(value) => setFilters(prev => ({ ...prev, politicalStatus: value }))}
+                    style={{ width: '100%' }}
+                    size="small"
+                    allowClear
+                    options={[
+                      { value: '中共党员', label: '中共党员' },
+                      { value: '共青团员', label: '共青团员' },
+                      { value: '群众', label: '群众' },
+                      { value: '民主党派', label: '民主党派' }
+                    ]}
+                  />
+                </div>
+              </Col>
+              <Col span={5}>
+                <div style={{ paddingTop: '22px' }}>
+                  <Space>
+                    <Button type="primary" onClick={applyFilters} size="small">
+                      搜索与筛选
+                    </Button>
+                    <Button onClick={resetFilters} size="small">
+                      重置
+                    </Button>
+                  </Space>
+                </div>
+              </Col>
+            </Row>
           </div>
         </div>
 

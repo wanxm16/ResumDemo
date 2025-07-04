@@ -79,6 +79,12 @@ export const getResumes = async (keyword = '', filters = {}, limit = 100) => {
   if (filters.maxWorkYears !== undefined && filters.maxWorkYears !== null) {
     params.max_work_years = filters.maxWorkYears;
   }
+  if (filters.gender) {
+    params.gender = filters.gender;
+  }
+  if (filters.politicalStatus) {
+    params.political_status = filters.politicalStatus;
+  }
   
   const response = await api.get('/resumes', { params });
   return response.data;
@@ -130,6 +136,31 @@ export const generateResumeData = async () => {
  */
 export const deleteResume = async (uniqueId) => {
   const response = await api.delete(`/resumes/${encodeURIComponent(uniqueId)}`);
+  return response.data;
+};
+
+/**
+ * 导出简历数据为Excel
+ * @param {Object} filters - 筛选条件（与getResumes相同）
+ * @param {string} keyword - 搜索关键词
+ * @returns {Promise} 导出结果
+ */
+export const exportToExcel = async (filters = {}, keyword = '') => {
+  const requestData = {
+    filters: {
+      keyword,
+      min_age: filters.minAge,
+      max_age: filters.maxAge,
+      min_work_years: filters.minWorkYears,
+      max_work_years: filters.maxWorkYears,
+      gender: filters.gender,
+      political_status: filters.politicalStatus
+    }
+  };
+  
+  const response = await api.post('/export-excel', requestData, {
+    timeout: 60000, // 导出可能需要较长时间
+  });
   return response.data;
 };
 

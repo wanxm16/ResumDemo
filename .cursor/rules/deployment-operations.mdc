@@ -1,0 +1,305 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 部署运维管理规范
+
+## 🚀 启动脚本系统
+
+### 脚本架构设计
+
+#### [start_all.sh](mdc:start_all.sh) - 一键启动脚本
+- **功能**: 智能启动前后端所有服务
+- **特性**:
+  - 彩色输出和进度条显示
+  - 智能环境检查（Python、Node.js、pnpm版本）
+  - 自动端口冲突检测和处理
+  - 服务健康监控和连接验证
+  - 自动打开浏览器访问系统
+  - 完整的错误处理和友好提示
+
+#### [start_backend.sh](mdc:start_backend.sh) - 后端启动脚本
+- **功能**: 启动FastAPI后端服务
+- **优化特性**:
+  - Python版本兼容性检查（3.8+）
+  - 虚拟环境自动创建和管理
+  - 依赖智能安装（清华镜像加速）
+  - 健康检查端点自动添加
+  - 端口8080冲突智能处理
+
+#### [start_frontend.sh](mdc:start_frontend.sh) - 前端启动脚本
+- **功能**: 启动React前端开发服务器
+- **优化特性**:
+  - Node.js版本验证（16+）
+  - pnpm自动安装和配置
+  - 依赖缓存优化管理
+  - 环境变量自动配置
+  - 端口4000冲突智能处理
+
+#### [stop_all.sh](mdc:stop_all.sh) - 优雅停止脚本
+- **功能**: 安全停止所有运行的服务
+- **核心特性**:
+  - 智能进程识别（PID文件+端口检查）
+  - 优雅关闭（TERM信号→KILL信号）
+  - 实时进度显示和状态反馈
+  - 完整性验证和资源清理
+  - 友好的操作指南
+
+#### [restart_all.sh](mdc:restart_all.sh) - 智能重启脚本
+- **功能**: 提供多模式重启服务
+- **参数支持**:
+  - `--clean`: 清理重启（删除依赖重新安装）
+  - `--force`: 强制重启（忽略停止错误）
+  - `--help`: 显示详细使用说明
+- **流程**: 停止服务 → 可选清理 → 重新启动
+
+#### [status.sh](mdc:status.sh) - 系统状态监控
+- **功能**: 全面的系统状态检查和监控
+- **监控维度**:
+  - 端口占用和进程状态
+  - PID文件有效性检查
+  - 日志文件分析和错误统计
+  - 系统资源使用情况
+  - 网络连通性测试
+  - 项目结构完整性验证
+- **模式支持**:
+  - `--watch`: 持续监控模式（5秒刷新）
+  - `--help`: 使用说明
+
+## 📊 日志管理规范
+
+### 日志目录结构
+```
+logs/
+├── backend.log          # 后端服务日志
+├── frontend.log         # 前端开发服务器日志
+├── backend.pid          # 后端进程ID文件
+├── frontend.pid         # 前端进程ID文件
+└── error.log           # 系统错误日志（可选）
+```
+
+### 日志文件说明
+
+#### [logs/backend.log](mdc:logs/backend.log)
+- **内容**: FastAPI服务运行日志
+- **包含信息**:
+  - 服务启动和停止记录
+  - API请求和响应日志
+  - 错误和异常堆栈
+  - 文件上传和解析过程
+  - 数据库操作记录
+
+#### [logs/frontend.log](mdc:logs/frontend.log)
+- **内容**: React开发服务器日志
+- **包含信息**:
+  - Webpack编译信息
+  - 模块热更新记录
+  - 构建错误和警告
+  - 开发服务器状态
+
+### 日志管理最佳实践
+```bash
+# ✅ 实时查看日志
+tail -f logs/backend.log
+tail -f logs/frontend.log
+
+# ✅ 查看最近错误
+grep -i "error\|exception" logs/backend.log | tail -10
+
+# ✅ 日志轮转（防止文件过大）
+# 可以设置crontab定期清理
+0 0 * * 0 find logs/ -name "*.log" -mtime +7 -delete
+
+# ✅ 日志分析
+# 统计API请求频率
+grep "POST\|GET\|PUT\|DELETE" logs/backend.log | cut -d' ' -f1 | sort | uniq -c
+```
+
+## 💾 数据管理规范
+
+### 数据目录结构
+```
+data/
+├── resume.csv           # 主要简历数据存储
+├── backup/             # 数据备份目录
+│   ├── resume_YYYYMMDD.csv
+│   └── ...
+└── temp/               # 临时文件目录
+```
+
+### 数据文件说明
+
+#### [data/resume.csv](mdc:data/resume.csv)
+- **格式**: UTF-8编码的CSV文件
+- **字段结构**:
+  - 基本信息：姓名、性别、年龄、联系方式
+  - 教育背景：学历、院校、专业、教育经历（JSON）
+  - 工作信息：求职意向、工作经历（JSON）
+  - 其他信息：技能、证书、爱好、自评
+  - 元数据：录入时间、唯一标识
+
+### 数据备份策略
+```bash
+# ✅ 手动备份
+cp data/resume.csv data/backup/resume_$(date +%Y%m%d_%H%M%S).csv
+
+# ✅ 定时备份（crontab）
+0 2 * * * cd /path/to/project && cp data/resume.csv data/backup/resume_$(date +\%Y\%m\%d).csv
+
+# ✅ 清理旧备份（保留30天）
+find data/backup/ -name "resume_*.csv" -mtime +30 -delete
+```
+
+## 🔧 环境配置管理
+
+### 开发环境要求
+```bash
+# 系统要求
+- OS: macOS / Linux / Windows (WSL)
+- Python: 3.8+ 
+- Node.js: 16+
+- 包管理: pnpm (自动安装)
+
+# 端口配置
+- 前端: 4000
+- 后端: 8080
+- API文档: 8080/docs
+```
+
+### 环境变量配置
+```bash
+# 后端环境变量
+export BACKEND_PORT=8080
+export DATA_DIR="../data"
+export LOG_LEVEL="INFO"
+
+# 前端环境变量
+export PORT=4000
+export REACT_APP_API_BASE_URL="http://localhost:8080"
+export BROWSER="none"  # 禁用自动打开浏览器（由脚本控制）
+```
+
+## 🚨 故障排除指南
+
+### 常见问题解决方案
+
+#### 端口冲突问题
+```bash
+# 检查端口占用
+lsof -ti:8080,4000
+
+# 强制释放端口
+lsof -ti:8080 | xargs kill -9
+lsof -ti:4000 | xargs kill -9
+
+# 或使用脚本自动处理
+./stop_all.sh  # 智能释放所有端口
+```
+
+#### 依赖安装问题
+```bash
+# 后端依赖问题
+./restart_all.sh --clean  # 清理重装后端依赖
+
+# 前端依赖问题
+cd frontend && rm -rf node_modules pnpm-lock.yaml
+pnpm install
+
+# 权限问题
+chmod +x *.sh  # 给所有脚本添加执行权限
+```
+
+#### 服务启动失败
+```bash
+# 检查详细错误信息
+./status.sh           # 查看系统状态
+tail -f logs/backend.log   # 查看后端日志
+tail -f logs/frontend.log  # 查看前端日志
+
+# 强制重启
+./restart_all.sh --force  # 忽略错误强制重启
+```
+
+## 📈 性能监控
+
+### 系统资源监控
+```bash
+# CPU和内存使用
+top -p $(cat logs/backend.pid)  # 监控后端进程
+top -p $(cat logs/frontend.pid) # 监控前端进程
+
+# 磁盘空间检查
+df -h .                 # 检查项目目录磁盘使用
+du -sh logs/ data/      # 检查日志和数据目录大小
+```
+
+### 应用性能监控
+```bash
+# API响应时间监控
+curl -w "@curl-format.txt" -o /dev/null -s "http://localhost:8080/resumes"
+
+# 数据库性能（CSV文件大小）
+wc -l data/resume.csv   # 记录数量
+ls -lh data/resume.csv  # 文件大小
+```
+
+## 🔄 维护操作
+
+### 定期维护任务
+```bash
+# 每日维护
+./status.sh             # 检查系统状态
+find logs/ -name "*.log" -size +100M  # 检查大日志文件
+
+# 每周维护
+./restart_all.sh --clean  # 清理重启
+find data/backup/ -mtime +30 -delete  # 清理旧备份
+
+# 每月维护
+# 检查依赖更新
+cd backend && pip list --outdated
+cd frontend && pnpm outdated
+```
+
+### 更新部署流程
+```bash
+# 1. 停止服务
+./stop_all.sh
+
+# 2. 备份数据
+cp data/resume.csv data/backup/resume_$(date +%Y%m%d_%H%M%S).csv
+
+# 3. 更新代码
+git pull origin main
+
+# 4. 清理重启
+./restart_all.sh --clean
+
+# 5. 验证部署
+./status.sh
+```
+
+## 🔒 安全规范
+
+### 文件权限管理
+```bash
+# 脚本权限
+chmod +x *.sh           # 启动脚本可执行
+chmod 644 *.md *.json   # 配置文件只读
+
+# 数据权限
+chmod 600 data/resume.csv  # 数据文件仅所有者读写
+chmod 700 logs/            # 日志目录仅所有者访问
+```
+
+### 敏感信息保护
+```bash
+# 环境变量管理
+# 不要在脚本中硬编码敏感信息
+# 使用环境变量或配置文件
+
+# 日志敏感信息过滤
+# 确保日志中不包含用户隐私数据
+```
+

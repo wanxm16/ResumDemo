@@ -1,0 +1,239 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 后端架构设计规范
+
+## 📁 目录结构
+
+```
+backend/
+├── app/                          # 应用核心代码
+│   ├── __init__.py              # 包初始化
+│   ├── main.py                  # FastAPI应用入口
+│   ├── models.py                # 数据模型定义
+│   └── services/                # 业务逻辑层
+│       ├── __init__.py
+│       ├── data_storage.py      # 数据存储服务
+│       └── resume_parser.py     # 简历解析服务
+├── requirements.txt             # Python依赖
+├── venv/                        # 虚拟环境
+└── logs/                        # 日志文件
+```
+
+## 🏗️ 架构设计
+
+### 核心文件说明
+
+#### [backend/app/main.py](mdc:backend/app/main.py)
+- **职责**: FastAPI应用主入口，路由定义
+- **核心功能**:
+  - API路由定义和端点实现
+  - CORS配置和中间件设置
+  - 异常处理和响应格式化
+  - 文件上传和AI生成接口
+
+#### [backend/app/models.py](mdc:backend/app/models.py)
+- **职责**: 数据模型和Pydantic schema定义
+- **核心模型**:
+  - `ResumeData`: 简历数据模型
+  - `ResumeFormData`: 表单提交数据模型
+  - `UploadResponse`: 上传响应模型
+
+#### [backend/app/services/resume_parser.py](mdc:backend/app/services/resume_parser.py)
+- **职责**: 简历文件解析核心逻辑
+- **功能模块**:
+  - PDF文本提取（支持OCR）
+  - Word文档解析
+  - 表格格式识别
+  - 正则表达式字段提取
+  - JSON格式教育/工作经历解析
+
+#### [backend/app/services/data_storage.py](mdc:backend/app/services/data_storage.py)
+- **职责**: 数据存储和检索服务
+- **核心功能**:
+  - CSV文件读写操作
+  - 数据过滤和搜索
+  - 简历记录CRUD操作
+  - 工作年限计算
+
+#### [backend/requirements.txt](mdc:backend/requirements.txt)
+- **职责**: Python依赖管理
+- **关键依赖**:
+  - FastAPI + uvicorn (Web框架)
+  - pandas (数据处理)
+  - python-docx (Word文档)
+  - pdfplumber + easyocr (PDF解析)
+  - requests (HTTP客户端)
+
+## 🔧 开发规范
+
+### API设计规范
+
+#### 端点命名
+```python
+# ✅ 好的命名
+@app.post("/upload")                    # 简历上传
+@app.get("/resumes")                   # 获取简历列表
+@app.delete("/resumes/{unique_id}")    # 删除指定简历
+@app.get("/stats")                     # 获取统计数据
+
+# ❌ 避免的命名
+@app.post("/uploadResumeFile")         # 过于冗长
+@app.get("/get_all_resumes")          # 动词冗余
+```
+
+#### 响应格式统一
+```python
+# 成功响应
+{
+    "success": true,
+    "message": "操作成功",
+    "data": { ... }
+}
+
+# 错误响应
+{
+    "success": false,
+    "message": "错误描述",
+    "error_code": "VALIDATION_ERROR"
+}
+```
+
+### 错误处理规范
+
+#### 使用HTTPException
+```python
+from fastapi import HTTPException
+
+# ✅ 标准错误处理
+if not file_extension:
+    raise HTTPException(
+        status_code=400, 
+        detail="仅支持 .docx 和 .pdf 格式的文件"
+    )
+
+# ✅ 包装异常处理
+try:
+    result = process_file(file)
+except Exception as e:
+    raise HTTPException(
+        status_code=500,
+        detail=f"处理文件时出错: {str(e)}"
+    )
+```
+
+### 数据验证规范
+
+#### 使用Pydantic模型
+```python
+from pydantic import BaseModel, validator
+from typing import Optional
+
+class ResumeData(BaseModel):
+    姓名: Optional[str] = ""
+    年龄: Optional[str] = ""
+    
+    @validator('年龄')
+    def validate_age(cls, v):
+        if v and not v.isdigit():
+            raise ValueError('年龄必须是数字')
+        return v
+```
+
+## 🚀 性能优化
+
+### 文件处理优化
+- **临时文件管理**: 使用`tempfile`确保文件清理
+- **异步处理**: 使用`async/await`处理I/O操作
+- **内存优化**: 大文件分块处理，避免内存溢出
+- **缓存策略**: 解析结果缓存，提升重复访问性能
+
+### 数据库操作优化
+- **批量操作**: 使用pandas批量处理CSV数据
+- **索引优化**: 对常查询字段建立索引机制
+- **分页查询**: 大数据集分页返回，避免一次性加载
+
+## 🔍 调试和监控
+
+### 日志记录
+```python
+import logging
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
+
+# 使用日志
+logger.info(f"开始解析文件: {file.filename}")
+logger.error(f"解析失败: {str(e)}")
+```
+
+### 健康检查
+```python
+@app.get("/health")
+async def health_check():
+    """系统健康检查端点"""
+    return {
+        "status": "ok",
+        "timestamp": datetime.now().isoformat(),
+        "version": "2.0.0"
+    }
+```
+
+## 🔒 安全规范
+
+### 文件上传安全
+- **文件类型验证**: 严格检查文件扩展名和MIME类型
+- **文件大小限制**: 设置合理的文件大小上限
+- **路径安全**: 避免路径遍历攻击
+- **临时文件清理**: 确保临时文件及时删除
+
+### API安全
+- **输入验证**: 使用Pydantic进行严格的输入验证
+- **SQL注入防护**: 使用参数化查询（虽然当前使用CSV）
+- **XSS防护**: 对用户输入进行转义处理
+- **CORS配置**: 合理配置跨域访问策略
+
+## 📈 扩展性设计
+
+### 数据层抽象
+```python
+# 抽象数据访问层，便于后续扩展到数据库
+class DataStorageInterface:
+    def save_resume_data(self, data: ResumeData) -> bool:
+        raise NotImplementedError
+    
+    def get_all_resumes(self) -> List[dict]:
+        raise NotImplementedError
+
+class CSVDataStorage(DataStorageInterface):
+    # CSV实现
+    pass
+
+class DatabaseStorage(DataStorageInterface):
+    # 数据库实现（未来扩展）
+    pass
+```
+
+### 解析器插件化
+```python
+# 支持多种解析器，便于扩展新格式
+class ParserInterface:
+    def parse(self, file_path: str) -> ResumeData:
+        raise NotImplementedError
+
+class WordParser(ParserInterface):
+    # Word文档解析
+    pass
+
+class PDFParser(ParserInterface):
+    # PDF文档解析
+    pass
+```
+

@@ -146,6 +146,8 @@ async def get_resumes(
     max_age: Optional[int] = Query(None, description="最大年龄"),
     min_work_years: Optional[int] = Query(None, description="最小工作年限"),
     max_work_years: Optional[int] = Query(None, description="最大工作年限"),
+    gender: Optional[str] = Query(None, description="性别筛选"),
+    political_status: Optional[str] = Query(None, description="政治面貌筛选"),
     limit: int = Query(100, description="返回结果数量限制")
 ):
     """
@@ -157,6 +159,8 @@ async def get_resumes(
     - max_age: 最大年龄筛选
     - min_work_years: 最小工作年限筛选
     - max_work_years: 最大工作年限筛选
+    - gender: 性别筛选
+    - political_status: 政治面貌筛选
     - limit: 返回结果数量限制
     """
     try:
@@ -166,7 +170,9 @@ async def get_resumes(
             min_age=min_age,
             max_age=max_age,
             min_work_years=min_work_years,
-            max_work_years=max_work_years
+            max_work_years=max_work_years,
+            gender=gender,
+            political_status=political_status
         )
         
         # 限制返回数量
@@ -984,6 +990,144 @@ def format_json_content(content, content_type):
     except Exception as e:
         print(f"JSON解析错误: {e}")
         return str(content)
+
+@app.post("/export-excel")
+async def export_excel(request: dict):
+    """
+    导出筛选后的简历数据为Excel格式
+    """
+    try:
+        import pandas as pd
+        from io import BytesIO
+        
+        # 获取筛选参数
+        filters = request.get('filters', {})
+        
+        # 使用筛选参数获取数据
+        resumes = data_storage.filter_resumes(
+            keyword=filters.get('keyword', ''),
+            min_age=filters.get('min_age'),
+            max_age=filters.get('max_age'),
+            min_work_years=filters.get('min_work_years'),
+            max_work_years=filters.get('max_work_years'),
+            gender=filters.get('gender'),
+            political_status=filters.get('political_status')
+        )
+        
+        if not resumes:
+            raise HTTPException(status_code=404, detail="没有找到匹配的简历数据")
+        
+        # 准备Excel数据
+        excel_data = []
+        for resume in resumes:
+            row = {}
+            # 基本信息
+            row['姓名'] = resume.get('姓名', '')
+            row['性别'] = resume.get('性别', '')
+            row['年龄'] = resume.get('年龄', '')
+            row['政治面貌'] = resume.get('政治面貌', '')
+            row['体重'] = resume.get('体重', '')
+            row['籍贯'] = resume.get('籍贯', '')
+            row['健康状况'] = resume.get('健康状况', '')
+            row['身高'] = resume.get('身高', '')
+            
+            # 教育信息
+            row['学历'] = resume.get('学历', '')
+            row['毕业院校'] = resume.get('毕业院校', '')
+            row['专业'] = resume.get('专业', '')
+            
+            # 联系信息
+            row['手机'] = resume.get('手机', '')
+            row['邮箱'] = resume.get('邮箱', '')
+            row['求职意向'] = resume.get('求职意向', '')
+            
+            # 经历信息（简化显示）
+            education_exp = resume.get('教育经历', '')
+            if education_exp:
+                try:
+                    import json
+                    edu_list = json.loads(education_exp)
+                    if isinstance(edu_list, list) and edu_list:
+                        # 取最高学历
+                        latest_edu = edu_list[0]
+                        row['最高学历详情'] = f"{latest_edu.get('degree', '')} - {latest_edu.get('school', '')} - {latest_edu.get('major', '')}"
+                    else:
+                        row['最高学历详情'] = education_exp
+                except:
+                    row['最高学历详情'] = education_exp
+            else:
+                row['最高学历详情'] = ''
+            
+            work_exp = resume.get('工作经历', '')
+            if work_exp:
+                try:
+                    import json
+                    work_list = json.loads(work_exp)
+                    if isinstance(work_list, list) and work_list:
+                        # 取最近工作
+                        latest_work = work_list[0]
+                        row['最近工作'] = f"{latest_work.get('company', '')} - {latest_work.get('position', '')}"
+                    else:
+                        row['最近工作'] = work_exp
+                except:
+                    row['最近工作'] = work_exp
+            else:
+                row['最近工作'] = ''
+            
+            row['荣誉奖项'] = resume.get('荣誉奖项', '')
+            row['技能证书'] = resume.get('技能证书', '')
+            row['兴趣爱好'] = resume.get('兴趣爱好', '')
+            row['自我评价'] = resume.get('自我评价', '')
+            row['录入时间'] = resume.get('录入时间', '')
+            
+            excel_data.append(row)
+        
+        # 创建DataFrame
+        df = pd.DataFrame(excel_data)
+        
+        # 生成Excel文件
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='简历数据', index=False)
+            
+            # 获取工作表
+            worksheet = writer.sheets['简历数据']
+            
+            # 设置列宽
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                adjusted_width = min(max_length + 2, 50)  # 最大宽度50
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        # 生成文件名
+        from datetime import datetime
+        filename = f"简历数据导出_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        # 返回文件
+        return JSONResponse(
+            content={
+                "success": True,
+                "message": f"成功导出 {len(resumes)} 条简历数据",
+                "filename": filename,
+                "data": output.getvalue().hex()  # 转换为hex字符串传输
+            }
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"导出Excel时出错: {str(e)}"
+        )
+
 
 @app.get("/health")
 async def health_check():
